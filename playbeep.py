@@ -1,55 +1,62 @@
-# play beep while you press shift ley
-
+import simpleaudio
 import keyboard
-from pygame import mixer 
 import time
+import sys
 
-def main():
-    # Initialize pygame mixer for audio
-    mixer.init()
+def play_while_pressed():
     
-    # Load the beep sound
-    # try:
-    mixer.music.load('/Users/ryem/Desktop/Cornell_Tech/EchoRide_explore/sound_effect/Beep_Sound_Effect.wav')
-    # except pygame.error:
-    #     print("Error: Could not load 'beep.wav'. Make sure the file exists in the same directory.")
-    #     return
-    # Setting the volume 
-    mixer.music.set_volume(1) 
-    
-    print("Program started. Press Shift key to play beep sound. Press Esc to exit.")
-    mixer.music.play()
-
-    # Flag to track if sound is currently playing
-    is_playing = False
+    # Get the wav file path from command line arguments
+    wav_file = "/Users/ryem/Desktop/Cornell_Tech/EchoRide_explore/sound_effect/Beep_Sound_Effect.wav"
     
     try:
-        while True:
-            # Check if shift is pressed
-            print(".")
-            if keyboard.is_pressed('shift'):
-                if not is_playing:  # Only play if not already playing
-                    mixer.music.play()
-                    is_playing = True
-            else:
-                # Stop the sound when shift is released
-                mixer.music.pause()
-                is_playing = False
-                
-            # Check for escape key to exit
-            if keyboard.is_pressed('esc'):
-                print("Exiting program...")
-                break
-                
-            # Small delay to prevent high CPU usage
-            print(".")
-            time.sleep(1)
-            
+        # Load the wav file
+        wave_obj = simpleaudio.WaveObject.from_wave_file(wav_file)
+        print(f"Loaded: {wav_file}")
+        print("Press and hold shift to play. Press Ctrl+C to exit.")
+
+        play_obj = None
+        was_playing = False
+        play_obj = wave_obj.play()
+        print("mark2")
+        time.sleep(1000)
+        print("mark3")
+
+        # while True:
+        #     if keyboard.is_pressed('shift'):
+        #         # Start playing if not already playing
+        #         if not was_playing:
+        #             if play_obj is not None:
+        #                 play_obj.stop()
+        #             play_obj = wave_obj.play()
+        #             was_playing = True
+        #     else:
+        #         # Stop playing if it was playing
+        #         if was_playing:
+        #             if play_obj is not None:
+        #                 play_obj.stop()
+        #             was_playing = False
+
+        #     time.sleep(0.1)  # Small delay to prevent high CPU usage
+
     except KeyboardInterrupt:
-        print("\nProgram terminated by user.")
-    finally:
-        # Clean up pygame
-        mixer.music.stop()
+        # Handle Ctrl+C gracefully
+        if play_obj is not None:
+            play_obj.stop()
+        print("\nExiting...")
+        sys.exit(0)
+
+    except FileNotFoundError:
+        print(f"Error: File '{wav_file}' not found.")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        sys.exit(1)
 
 if __name__ == "__main__":
-    main()
+    try:
+        play_while_pressed()
+        print("mark1")
+        sys.exit(0)
+    except Exception as e:
+        print(f"Unexpected error: {str(e)}")
+        sys.exit(1)
