@@ -72,6 +72,11 @@
             background: linear-gradient(145deg, #00d2ff, #3a7bd5);
         }
 
+        .pad-button.sound-playing {
+            background: linear-gradient(145deg, #ffd700, #ffb347) !important;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
         @keyframes pulse {
             0% { transform: scale(1); }
             50% { transform: scale(1.05); }
@@ -239,6 +244,14 @@
                     <button id="ttsButton" class="tts-button">▶ Speak</button>
                 </div>
                 <div class="status" id="status"></div>
+                
+                <div class="tts-history" id="ttsHistory" style="margin-top: 20px;">
+                    <h4 style="margin-bottom: 10px; font-size: 1.1rem;">📜 Speech History</h4>
+                    <div id="historyList" style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 15px; max-height: 200px; overflow-y: auto;">
+                        <p style="opacity: 0.7; font-style: italic;">No speech history yet...</p>
+                    </div>
+                    <button id="clearHistoryButton" style="margin-top: 10px; padding: 8px 15px; border: none; border-radius: 6px; background: #ff6b6b; color: white; cursor: pointer; font-size: 0.9rem;">Clear History</button>
+                </div>
             </div>
         </div>
     </div>
@@ -248,7 +261,9 @@
             constructor() {
                 this.sounds = {};
                 this.audioElements = {};
+                this.playingAudios = {}; // Track currently playing sounds
                 this.isSpeaking = false;
+                this.speechHistory = []; // Store speech history
                 this.init();
             }
 
@@ -336,17 +351,45 @@
                 }
 
                 const button = document.getElementById(`pad-${padNumber}`);
-                button.classList.add('playing');
                 
+                // If sound is already playing, stop it
+                if (this.playingAudios[padNumber]) {
+                    this.playingAudios[padNumber].pause();
+                    this.playingAudios[padNumber].currentTime = 0;
+                    delete this.playingAudios[padNumber];
+                    button.classList.remove('sound-playing');
+                    return;
+                }
+
+                // Add click animation
+                button.classList.add('playing');
                 setTimeout(() => {
                     button.classList.remove('playing');
                 }, 300);
 
-                // Create a new audio instance for each play to allow overlapping
+                // Create and play new audio
                 const audio = new Audio(this.sounds[padNumber]);
                 audio.volume = 0.7;
                 
+                // Track the playing audio
+                this.playingAudios[padNumber] = audio;
+                button.classList.add('sound-playing');
+                
+                // Remove from playing list when finished
+                audio.onended = () => {
+                    delete this.playingAudios[padNumber];
+                    button.classList.remove('sound-playing');
+                };
+                
+                audio.onerror = () => {
+                    delete this.playingAudios[padNumber];
+                    button.classList.remove('sound-playing');
+                    this.showStatus('Error playing sound');
+                };
+                
                 audio.play().catch(error => {
+                    delete this.playingAudios[padNumber];
+                    button.classList.remove('sound-playing');
                     this.showStatus('Error playing sound');
                     console.error('Audio play error:', error);
                 });
@@ -356,6 +399,7 @@
                 // Text-to-Speech
                 const ttsButton = document.getElementById('ttsButton');
                 const ttsInput = document.getElementById('ttsInput');
+                const clearHistoryButton = document.getElementById('clearHistoryButton');
                 
                 ttsButton.addEventListener('click', () => this.speakText());
                 
@@ -364,6 +408,8 @@
                         this.speakText();
                     }
                 });
+
+                clearHistoryButton.addEventListener('click', () => this.clearHistory());
 
                 // Keyboard support for pads (1-9, q-w-e-r, a-s-d-f, z-x-c-v)
                 document.addEventListener('keydown', (e) => {
@@ -407,6 +453,9 @@
                         this.isSpeaking = true;
                         button.textContent = '⏹ Stop';
                         this.showStatus('Speaking...');
+                        
+                        // Add to history
+                        this.addToHistory(text);
                     };
                     
                     utterance.onend = () => {
@@ -432,6 +481,53 @@
                 } else {
                     this.showStatus('Text-to-speech not supported in this browser');
                 }
+            }
+
+            addToHistory(text) {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString();
+                
+                this.speechHistory.unshift({
+                    text: text,
+                    time: timeString
+                });
+                
+                // Keep only last 10 entries
+                if (this.speechHistory.length > 10) {
+                    this.speechHistory = this.speechHistory.slice(0, 10);
+                }
+                
+                this.updateHistoryDisplay();
+            }
+
+            updateHistoryDisplay() {
+                const historyList = document.getElementById('historyList');
+                
+                if (this.speechHistory.length === 0) {
+                    historyList.innerHTML = '<p style="opacity: 0.7; font-style: italic;">No speech history yet...</p>';
+                    return;
+                }
+                
+                const historyHTML = this.speechHistory.map(entry => `
+                    <div style="margin-bottom: 10px; padding: 8px; background: rgba(255,255,255,0.1); border-radius: 6px; cursor: pointer;" 
+                         onclick="launchpad.speakFromHistory('${entry.text.replace(/'/g, '\\\'').replace(/"/g, '&quot;')}')">
+                        <div style="font-size: 0.9rem; margin-bottom: 3px;">"${entry.text}"</div>
+                        <div style="font-size: 0.75rem; opacity: 0.7;">${entry.time}</div>
+                    </div>
+                `).join('');
+                
+                historyList.innerHTML = historyHTML;
+            }
+
+            speakFromHistory(text) {
+                document.getElementById('ttsInput').value = text;
+                this.speakText();
+            }
+
+            clearHistory() {
+                this.speechHistory = [];
+                this.updateHistoryDisplay();
+                this.showStatus('History cleared');
             }
 
             saveUrls() {
