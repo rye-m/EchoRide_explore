@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sound Launchpad</title>
+    <title>Sketchy Sound Launchpad</title>
+    <script src="https://unpkg.com/roughjs@latest/bundled/rough.js"></script>
     <style>
         * {
             margin: 0;
@@ -12,196 +13,233 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            background: #f5f5dc;
             min-height: 100vh;
             padding: 20px;
-            color: white;
+            color: #333;
+            background-image: 
+                radial-gradient(circle at 20% 20%, rgba(120,119,198,0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(255,119,198,0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(120,255,198,0.1) 0%, transparent 50%);
         }
 
         .container {
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
         }
 
         h1 {
             text-align: center;
             margin-bottom: 30px;
-            font-size: 2.5rem;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            font-size: 2.8rem;
+            color: #444;
+            transform: rotate(-1deg);
+            text-shadow: 3px 3px 0px #ddd;
         }
 
         .launchpad {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 15px;
+            gap: 20px;
             margin-bottom: 40px;
-            padding: 20px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 15px;
-            backdrop-filter: blur(10px);
+            padding: 30px;
+            position: relative;
         }
 
         .pad-button {
-            aspect-ratio: 1;
+            width: 100px;
+            height: 100px;
             border: none;
-            border-radius: 12px;
-            background: linear-gradient(145deg, #ff6b6b, #ee5a24);
-            color: white;
-            font-size: 1rem;
+            background: transparent;
+            color: #333;
+            font-size: 1.2rem;
             font-weight: bold;
             cursor: pointer;
-            transition: all 0.2s ease;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
             position: relative;
-            overflow: hidden;
+            font-family: 'Comic Sans MS', cursive;
+            transition: transform 0.1s ease;
         }
 
         .pad-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+            transform: scale(1.05) rotate(1deg);
         }
 
         .pad-button:active {
-            transform: translateY(0);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            transform: scale(0.95) rotate(-1deg);
         }
 
         .pad-button.playing {
-            animation: pulse 0.3s ease-out;
-            background: linear-gradient(145deg, #00d2ff, #3a7bd5);
+            animation: wobble 0.3s ease-out;
         }
 
         .pad-button.sound-playing {
-            background: linear-gradient(145deg, #ffd700, #ffb347) !important;
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            animation: shake 0.5s infinite;
         }
 
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
+        @keyframes wobble {
+            0% { transform: rotate(0deg) scale(1); }
+            25% { transform: rotate(2deg) scale(1.1); }
+            75% { transform: rotate(-2deg) scale(1.1); }
+            100% { transform: rotate(0deg) scale(1); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0) rotate(0deg); }
+            25% { transform: translateX(-2px) rotate(1deg); }
+            75% { transform: translateX(2px) rotate(-1deg); }
         }
 
         .controls {
-            background: rgba(255,255,255,0.1);
-            border-radius: 15px;
             padding: 25px;
-            backdrop-filter: blur(10px);
             margin-bottom: 20px;
+            position: relative;
         }
 
-        .url-input-section {
+        .url-input-section, .tts-section {
             margin-bottom: 30px;
+            position: relative;
         }
 
-        .url-input-section h3 {
+        .url-input-section h3, .tts-section h3 {
             margin-bottom: 15px;
-            font-size: 1.3rem;
+            font-size: 1.4rem;
+            color: #444;
+            transform: rotate(-0.5deg);
         }
 
         .url-input-group {
             display: flex;
             gap: 10px;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             align-items: center;
+            transform: rotate(0.2deg);
+        }
+
+        .url-input-group:nth-child(even) {
+            transform: rotate(-0.2deg);
         }
 
         .url-input-group label {
             min-width: 80px;
             font-weight: bold;
+            font-family: 'Comic Sans MS', cursive;
         }
 
         .url-input-group input {
             flex: 1;
-            padding: 10px;
-            border: none;
-            border-radius: 8px;
-            background: rgba(255,255,255,0.2);
-            color: white;
+            padding: 12px;
+            border: 3px solid #333;
+            background: #fff;
+            color: #333;
             font-size: 0.9rem;
+            font-family: 'Comic Sans MS', cursive;
+            transform: rotate(-0.3deg);
         }
 
-        .url-input-group input::placeholder {
-            color: rgba(255,255,255,0.7);
-        }
-
-        .url-input-group button {
-            padding: 10px 15px;
-            border: none;
-            border-radius: 8px;
-            background: #4ecdc4;
-            color: white;
+        .url-input-group button, .tts-button, #clearHistoryButton {
+            padding: 12px 18px;
+            border: 3px solid #333;
+            background: #fff;
+            color: #333;
             cursor: pointer;
             font-weight: bold;
-            transition: background 0.2s;
+            font-family: 'Comic Sans MS', cursive;
+            transition: all 0.1s;
+            transform: rotate(0.5deg);
         }
 
-        .url-input-group button:hover {
-            background: #45b7aa;
-        }
-
-        .tts-section h3 {
-            margin-bottom: 15px;
-            font-size: 1.3rem;
+        .url-input-group button:hover, .tts-button:hover, #clearHistoryButton:hover {
+            background: #f0f0f0;
+            transform: rotate(-0.5deg) scale(1.05);
         }
 
         .tts-controls {
             display: flex;
             gap: 10px;
             align-items: center;
+            margin-bottom: 15px;
         }
 
         .tts-input {
             flex: 1;
             padding: 12px;
-            border: none;
-            border-radius: 8px;
-            background: rgba(255,255,255,0.2);
-            color: white;
+            border: 3px solid #333;
+            background: #fff;
+            color: #333;
             font-size: 1rem;
-        }
-
-        .tts-input::placeholder {
-            color: rgba(255,255,255,0.7);
-        }
-
-        .tts-button {
-            padding: 12px 20px;
-            border: none;
-            border-radius: 8px;
-            background: #ff9ff3;
-            color: white;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 1rem;
-            transition: background 0.2s;
-        }
-
-        .tts-button:hover {
-            background: #f368e0;
-        }
-
-        .tts-button:disabled {
-            background: #666;
-            cursor: not-allowed;
+            font-family: 'Comic Sans MS', cursive;
+            transform: rotate(0.3deg);
         }
 
         .status {
             text-align: center;
             margin-top: 15px;
-            font-size: 0.9rem;
-            opacity: 0.8;
+            font-size: 1rem;
+            font-weight: bold;
+            color: #666;
+            transform: rotate(-0.2deg);
+        }
+
+        .tts-history h4 {
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+            color: #444;
+            transform: rotate(0.3deg);
+        }
+
+        #historyList {
+            background: #fff;
+            border: 3px solid #333;
+            padding: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            transform: rotate(-0.2deg);
+        }
+
+        .history-item {
+            margin-bottom: 10px;
+            padding: 8px;
+            background: #f9f9f9;
+            border: 2px solid #ddd;
+            cursor: pointer;
+            transform: rotate(0.1deg);
+            transition: all 0.1s;
+        }
+
+        .history-item:hover {
+            background: #eee;
+            transform: rotate(-0.1deg) scale(1.02);
+        }
+
+        .history-item:nth-child(even) {
+            transform: rotate(-0.1deg);
+        }
+
+        #clearHistoryButton {
+            transform: rotate(0.7deg);
+        }
+
+        /* Rough.js canvas styling */
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: -1;
         }
 
         @media (max-width: 600px) {
             .launchpad {
-                gap: 10px;
+                gap: 15px;
                 padding: 15px;
             }
             
             .pad-button {
-                font-size: 0.8rem;
+                width: 70px;
+                height: 70px;
+                font-size: 1rem;
             }
             
             .url-input-group {
@@ -217,7 +255,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>🎵 Sound Launchpad</h1>
+        <h1>🎵 Sketchy Sound Launchpad</h1>
         
         <div class="launchpad" id="launchpad">
             <!-- Buttons will be generated by JavaScript -->
@@ -246,44 +284,219 @@
                 <div class="status" id="status"></div>
                 
                 <div class="tts-history" id="ttsHistory" style="margin-top: 20px;">
-                    <h4 style="margin-bottom: 10px; font-size: 1.1rem;">📜 Speech History</h4>
-                    <div id="historyList" style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 15px; max-height: 200px; overflow-y: auto;">
+                    <h4>📜 Speech History</h4>
+                    <div id="historyList">
                         <p style="opacity: 0.7; font-style: italic;">No speech history yet...</p>
                     </div>
-                    <button id="clearHistoryButton" style="margin-top: 10px; padding: 8px 15px; border: none; border-radius: 6px; background: #ff6b6b; color: white; cursor: pointer; font-size: 0.9rem;">Clear History</button>
+                    <button id="clearHistoryButton">Clear History</button>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        class SoundLaunchpad {
+        class SketchySoundLaunchpad {
             constructor() {
                 this.sounds = {};
                 this.audioElements = {};
-                this.playingAudios = {}; // Track currently playing sounds
+                this.playingAudios = {};
                 this.isSpeaking = false;
-                this.speechHistory = []; // Store speech history
+                this.speechHistory = [];
+                this.roughCanvas = null;
+                this.rc = null;
                 this.init();
             }
 
             init() {
+                // Check if Rough.js loaded properly
+                if (typeof rough === 'undefined') {
+                    console.error('Rough.js failed to load, falling back to regular styling');
+                    this.createButtons();
+                    this.createUrlInputs();
+                    this.setupEventListeners();
+                    this.loadSavedUrls();
+                    return;
+                }
+                
+                this.setupRoughCanvas();
                 this.createButtons();
                 this.createUrlInputs();
                 this.setupEventListeners();
                 this.loadSavedUrls();
+                this.drawSketchyElements();
+            }
+
+            setupRoughCanvas() {
+                // Check if rough is available
+                if (typeof rough === 'undefined') {
+                    console.warn('Rough.js not available, skipping canvas setup');
+                    return;
+                }
+                
+                // Create canvas for rough drawings
+                this.roughCanvas = document.createElement('canvas');
+                this.roughCanvas.style.position = 'fixed';
+                this.roughCanvas.style.top = '0';
+                this.roughCanvas.style.left = '0';
+                this.roughCanvas.style.width = '100%';
+                this.roughCanvas.style.height = '100%';
+                this.roughCanvas.style.pointerEvents = 'none';
+                this.roughCanvas.style.zIndex = '-1';
+                
+                document.body.appendChild(this.roughCanvas);
+                
+                this.resizeCanvas();
+                this.rc = rough.canvas(this.roughCanvas);
+                
+                window.addEventListener('resize', () => this.resizeCanvas());
+            }
+
+            resizeCanvas() {
+                this.roughCanvas.width = window.innerWidth;
+                this.roughCanvas.height = window.innerHeight;
+            }
+
+            drawSketchyElements() {
+                if (!this.rc) return;
+                
+                // Clear canvas
+                const ctx = this.roughCanvas.getContext('2d');
+                ctx.clearRect(0, 0, this.roughCanvas.width, this.roughCanvas.height);
+                
+                // Draw sketchy background elements
+                this.drawRandomDoodles();
+                this.drawContainerOutlines();
+            }
+
+            drawRandomDoodles() {
+                // Draw some random sketchy elements in the background
+                const colors = ['#ffcccb', '#add8e6', '#90ee90', '#dda0dd', '#f0e68c'];
+                
+                for (let i = 0; i < 8; i++) {
+                    const x = Math.random() * this.roughCanvas.width;
+                    const y = Math.random() * this.roughCanvas.height;
+                    const radius = 20 + Math.random() * 40;
+                    const color = colors[Math.floor(Math.random() * colors.length)];
+                    
+                    this.rc.circle(x, y, radius, {
+                        fill: color,
+                        fillStyle: 'zigzag',
+                        stroke: color,
+                        strokeWidth: 2,
+                        roughness: 2
+                    });
+                }
+                
+                // Draw some random lines
+                for (let i = 0; i < 5; i++) {
+                    const x1 = Math.random() * this.roughCanvas.width;
+                    const y1 = Math.random() * this.roughCanvas.height;
+                    const x2 = x1 + (Math.random() - 0.5) * 200;
+                    const y2 = y1 + (Math.random() - 0.5) * 200;
+                    
+                    this.rc.line(x1, y1, x2, y2, {
+                        stroke: '#ddd',
+                        strokeWidth: 3,
+                        roughness: 1.5
+                    });
+                }
+            }
+
+            drawContainerOutlines() {
+                // Draw sketchy outlines for main containers
+                const launchpad = document.getElementById('launchpad');
+                const controls = document.querySelector('.controls');
+                
+                if (launchpad) {
+                    const rect = launchpad.getBoundingClientRect();
+                    this.rc.rectangle(rect.left - 10, rect.top - 10, rect.width + 20, rect.height + 20, {
+                        stroke: '#666',
+                        strokeWidth: 3,
+                        roughness: 2,
+                        fill: 'rgba(255,255,255,0.1)',
+                        fillStyle: 'cross-hatch'
+                    });
+                }
+                
+                if (controls) {
+                    const rect = controls.getBoundingClientRect();
+                    this.rc.rectangle(rect.left - 10, rect.top - 10, rect.width + 20, rect.height + 20, {
+                        stroke: '#666',
+                        strokeWidth: 3,
+                        roughness: 2,
+                        fill: 'rgba(255,255,255,0.05)',
+                        fillStyle: 'zigzag'
+                    });
+                }
             }
 
             createButtons() {
                 const launchpad = document.getElementById('launchpad');
                 
                 for (let i = 1; i <= 16; i++) {
+                    const buttonContainer = document.createElement('div');
+                    buttonContainer.style.position = 'relative';
+                    buttonContainer.style.display = 'flex';
+                    buttonContainer.style.justifyContent = 'center';
+                    buttonContainer.style.alignItems = 'center';
+                    
                     const button = document.createElement('button');
                     button.className = 'pad-button';
                     button.id = `pad-${i}`;
                     button.textContent = i;
                     button.addEventListener('click', () => this.playSound(i));
-                    launchpad.appendChild(button);
+                    
+                    // Create canvas for this button
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 120;
+                    canvas.height = 120;
+                    canvas.style.position = 'absolute';
+                    canvas.style.top = '-10px';
+                    canvas.style.left = '-10px';
+                    canvas.style.pointerEvents = 'none';
+                    canvas.style.zIndex = '-1';
+                    
+                    buttonContainer.appendChild(canvas);
+                    buttonContainer.appendChild(button);
+                    launchpad.appendChild(buttonContainer);
+                    
+                    // Draw sketchy button
+                    this.drawSketchyButton(canvas, i);
+                }
+            }
+
+            drawSketchyButton(canvas, buttonNumber) {
+                // Check if rough is available
+                if (typeof rough === 'undefined') {
+                    return;
+                }
+                
+                const rc = rough.canvas(canvas);
+                const colors = [
+                    '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', 
+                    '#ffeaa7', '#dda0dd', '#ffcccb', '#add8e6',
+                    '#90ee90', '#f0e68c', '#deb887', '#ffa07a',
+                    '#98fb98', '#f0e68c', '#dda0dd', '#87ceeb'
+                ];
+                
+                const color = colors[buttonNumber - 1];
+                
+                // Draw sketchy rectangle
+                rc.rectangle(10, 10, 100, 100, {
+                    fill: color,
+                    fillStyle: 'zigzag',
+                    stroke: '#333',
+                    strokeWidth: 3,
+                    roughness: 1.5
+                });
+                
+                // Add some decorative sketchy elements
+                if (Math.random() > 0.5) {
+                    rc.circle(60, 60, 20, {
+                        stroke: '#333',
+                        strokeWidth: 2,
+                        roughness: 2
+                    });
                 }
             }
 
@@ -318,7 +531,6 @@
                 }
 
                 try {
-                    // Test if the URL is accessible
                     const audio = new Audio();
                     audio.preload = 'metadata';
                     
@@ -328,9 +540,10 @@
                         this.saveUrls();
                         this.showStatus(`Sound assigned to button ${padNumber}`);
                         
-                        // Update button appearance
-                        const button = document.getElementById(`pad-${padNumber}`);
-                        button.style.background = 'linear-gradient(145deg, #2ed573, #1e90ff)';
+                        // Redraw button with different style
+                        const buttonContainer = document.getElementById(`pad-${padNumber}`).parentElement;
+                        const canvas = buttonContainer.querySelector('canvas');
+                        this.drawSketchyButtonActive(canvas, padNumber);
                     };
                     
                     audio.onerror = () => {
@@ -344,6 +557,33 @@
                 }
             }
 
+            drawSketchyButtonActive(canvas, buttonNumber) {
+                const rc = rough.canvas(canvas);
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw active button style
+                rc.rectangle(10, 10, 100, 100, {
+                    fill: '#90EE90',
+                    fillStyle: 'cross-hatch',
+                    stroke: '#333',
+                    strokeWidth: 4,
+                    roughness: 1.8
+                });
+                
+                // Add checkmark
+                rc.line(35, 60, 50, 75, {
+                    stroke: '#333',
+                    strokeWidth: 4,
+                    roughness: 1
+                });
+                rc.line(50, 75, 85, 40, {
+                    stroke: '#333',
+                    strokeWidth: 4,
+                    roughness: 1
+                });
+            }
+
             playSound(padNumber) {
                 if (!this.sounds[padNumber]) {
                     this.showStatus(`No sound assigned to button ${padNumber}`);
@@ -352,7 +592,6 @@
 
                 const button = document.getElementById(`pad-${padNumber}`);
                 
-                // If sound is already playing, stop it
                 if (this.playingAudios[padNumber]) {
                     this.playingAudios[padNumber].pause();
                     this.playingAudios[padNumber].currentTime = 0;
@@ -361,21 +600,17 @@
                     return;
                 }
 
-                // Add click animation
                 button.classList.add('playing');
                 setTimeout(() => {
                     button.classList.remove('playing');
                 }, 300);
 
-                // Create and play new audio
                 const audio = new Audio(this.sounds[padNumber]);
                 audio.volume = 0.7;
                 
-                // Track the playing audio
                 this.playingAudios[padNumber] = audio;
                 button.classList.add('sound-playing');
                 
-                // Remove from playing list when finished
                 audio.onended = () => {
                     delete this.playingAudios[padNumber];
                     button.classList.remove('sound-playing');
@@ -396,7 +631,6 @@
             }
 
             setupEventListeners() {
-                // Text-to-Speech
                 const ttsButton = document.getElementById('ttsButton');
                 const ttsInput = document.getElementById('ttsInput');
                 const clearHistoryButton = document.getElementById('clearHistoryButton');
@@ -411,7 +645,6 @@
 
                 clearHistoryButton.addEventListener('click', () => this.clearHistory());
 
-                // Keyboard support for pads (1-9, q-w-e-r, a-s-d-f, z-x-c-v)
                 document.addEventListener('keydown', (e) => {
                     if (e.target.tagName === 'INPUT') return;
                     
@@ -426,6 +659,11 @@
                     if (padNumber) {
                         this.playSound(padNumber);
                     }
+                });
+
+                // Redraw sketchy elements when window resizes
+                window.addEventListener('resize', () => {
+                    setTimeout(() => this.drawSketchyElements(), 100);
                 });
             }
 
@@ -453,8 +691,6 @@
                         this.isSpeaking = true;
                         button.textContent = '⏹ Stop';
                         this.showStatus('Speaking...');
-                        
-                        // Add to history
                         this.addToHistory(text);
                     };
                     
@@ -472,7 +708,6 @@
                         this.showStatus('Error: Could not speak text');
                     };
                     
-                    // Configure voice settings
                     utterance.rate = 1;
                     utterance.pitch = 1;
                     utterance.volume = 0.8;
@@ -492,7 +727,6 @@
                     time: timeString
                 });
                 
-                // Keep only last 10 entries
                 if (this.speechHistory.length > 10) {
                     this.speechHistory = this.speechHistory.slice(0, 10);
                 }
@@ -509,9 +743,8 @@
                 }
                 
                 const historyHTML = this.speechHistory.map(entry => `
-                    <div style="margin-bottom: 10px; padding: 8px; background: rgba(255,255,255,0.1); border-radius: 6px; cursor: pointer;" 
-                         onclick="launchpad.speakFromHistory('${entry.text.replace(/'/g, '\\\'').replace(/"/g, '&quot;')}')">
-                        <div style="font-size: 0.9rem; margin-bottom: 3px;">"${entry.text}"</div>
+                    <div class="history-item" onclick="launchpad.speakFromHistory('${entry.text.replace(/'/g, '\\\'').replace(/"/g, '&quot;')}')">
+                        <div style="font-size: 0.9rem; margin-bottom: 3px; font-weight: bold;">"${entry.text}"</div>
                         <div style="font-size: 0.75rem; opacity: 0.7;">${entry.time}</div>
                     </div>
                 `).join('');
@@ -538,13 +771,10 @@
                         urls[i] = input.value.trim();
                     }
                 }
-                // Store in memory only (no localStorage in Claude.ai)
                 this.savedUrls = urls;
             }
 
             loadSavedUrls() {
-                // In a real environment, this would load from localStorage
-                // For Claude.ai, we start with empty state
                 this.savedUrls = {};
             }
 
@@ -559,14 +789,8 @@
             }
         }
 
-        // Initialize the launchpad
-        const launchpad = new SoundLaunchpad();
-
-        // Add some example URLs in the placeholder for demonstration
-        window.addEventListener('load', () => {
-            document.getElementById('url-1').placeholder = 'e.g., https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3';
-            document.getElementById('url-2').placeholder = 'e.g., https://example.com/kick.mp3';
-        });
+        // Initialize the sketchy launchpad
+        const launchpad = new SketchySoundLaunchpad();
     </script>
 </body>
 </html>
