@@ -1,9 +1,24 @@
 {
-  "dependencies": {
-    "@lit/reactive-element": "^2.1.0",
-    "lit": "^3.3.0",
-    "lit-html": "^3.3.0",
-    "roughjs": "^4.6.6",
-    "wired-elements": "^3.0.0-rc.6"
+  "name": "wired-elements-vanilla",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.html",
+  "scripts": {
+    "start": "serve",
+    "build": "echo This is a static template, there is no bundler or bundling involved!"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/codesandbox-app/static-template.git"
+  },
+  "keywords": [],
+  "author": "Ives van Hoorne",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/codesandbox-app/static-template/issues"
+  },
+  "homepage": "https://github.com/codesandbox-app/static-template#readme",
+  "devDependencies": {
+    "serve": "^11.2.0"
   }
 }

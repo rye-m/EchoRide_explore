@@ -1,825 +1,145 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wired Sound Launchpad</title>
-    <!-- Import map to resolve dependencies -->
-    <script type="importmap">
-    {
-      "imports": {
-        "lit": "https://cdn.skypack.dev/lit@3",
-        "lit/": "https://cdn.skypack.dev/lit/",
-        "@lit/reactive-element": "https://cdn.skypack.dev/@lit/reactive-element@2",
-        "lit-html": "https://cdn.skypack.dev/lit-html@3"
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Text-to-Speech App</title>
+    <link
+      href="https://fonts.googleapis.com/css?family=Gloria+Hallelujah&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+
+  <body>
+    <main>
+      <wired-card elevation="5">
+        <h1>🎤 Text-to-Speech</h1>
+        <p>Type your message and click play to hear it spoken!</p>
+      </wired-card>
+      
+      <section>
+        <wired-input 
+          id="textInput" 
+          placeholder="Type your message here..."
+          rows="4"
+          maxlength="500">
+        </wired-input>
+        
+        <wired-button id="playButton" elevation="2">
+          ▶️ Play
+        </wired-button>
+        
+        <div id="status"></div>
+      </section>
+    </main>
+  </body>
+
+  <script type="module" src="https://unpkg.com/wired-elements?module"></script>
+  <script type="module">
+    class TextToSpeechApp {
+      constructor() {
+        this.textInput = document.getElementById('textInput');
+        this.playButton = document.getElementById('playButton');
+        this.status = document.getElementById('status');
+        this.isSpeaking = false;
+        this.currentUtterance = null;
+        
+        this.init();
+      }
+      
+      init() {
+        this.playButton.addEventListener('click', () => this.toggleSpeech());
+        
+        // Listen for Enter key (Ctrl+Enter since it's a textarea)
+        this.textInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && e.ctrlKey) {
+            e.preventDefault();
+            this.toggleSpeech();
+          }
+        });
+        
+        this.showStatus('Ready to speak! Type your message above.');
+      }
+      
+      toggleSpeech() {
+        if (this.isSpeaking) {
+          this.stopSpeech();
+        } else {
+          this.startSpeech();
+        }
+      }
+      
+      startSpeech() {
+        const text = this.textInput.value.trim();
+        
+        if (!text) {
+          this.showStatus('Please enter some text to speak');
+          return;
+        }
+        
+        if (!('speechSynthesis' in window)) {
+          this.showStatus('Text-to-speech not supported in this browser');
+          return;
+        }
+        
+        // Create utterance
+        this.currentUtterance = new SpeechSynthesisUtterance(text);
+        
+        // Set up event handlers
+        this.currentUtterance.onstart = () => {
+          this.isSpeaking = true;
+          this.updateButton();
+          this.showStatus('🔊 Speaking...');
+        };
+        
+        this.currentUtterance.onend = () => {
+          this.isSpeaking = false;
+          this.currentUtterance = null;
+          this.updateButton();
+          this.showStatus('✅ Finished speaking!');
+          setTimeout(() => this.showStatus('Ready to speak!'), 2000);
+        };
+        
+        this.currentUtterance.onerror = (event) => {
+          this.isSpeaking = false;
+          this.currentUtterance = null;
+          this.updateButton();
+          this.showStatus('❌ Error occurred while speaking');
+          console.error('Speech synthesis error:', event);
+        };
+        
+        // Start speaking
+        speechSynthesis.speak(this.currentUtterance);
+      }
+      
+      stopSpeech() {
+        if (speechSynthesis.speaking) {
+          speechSynthesis.cancel();
+        }
+        
+        this.isSpeaking = false;
+        this.currentUtterance = null;
+        this.updateButton();
+        this.showStatus('⏹️ Speech stopped');
+        setTimeout(() => this.showStatus('Ready to speak!'), 2000);
+      }
+      
+      updateButton() {
+        if (this.isSpeaking) {
+          this.playButton.textContent = '⏹️ Stop';
+        } else {
+          this.playButton.textContent = '▶️ Play';
+        }
+      }
+      
+      showStatus(message) {
+        this.status.textContent = message;
       }
     }
-    </script>
     
-    <script type="module">
-        import { WiredButton } from './node_modules/wired-elements/lib/wired-button.js';
-        import { WiredInput } from './node_modules/wired-elements/lib/wired-input.js';
-        // Now import wired-elements - dependencies will resolve automatically
-        try {
-            // await import('https://cdn.skypack.dev/wired-elements@3/lib/wired-button.js');
-            // await import('https://cdn.skypack.dev/wired-elements@3/lib/wired-input.js');
-            await import('https://cdn.skypack.dev/wired-elements@3/lib/wired-card.js');
-             
-            
-            console.log('Wired elements loaded successfully with import maps');
-            window.wiredElementsLoaded = true;
-        } catch (error) {
-            console.error('Failed to load wired elements:', error);
-            window.wiredElementsLoaded = false;
-        }
-        
-        // Initialize after DOM is ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
-                window.launchpad = new WiredSoundLaunchpad();
-            });
-        } else {
-            window.launchpad = new WiredSoundLaunchpad();
-        }
-    </script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Comic Sans MS', cursive, sans-serif;
-            background: #f8f4e6;
-            min-height: 100vh;
-            padding: 20px;
-            color: #333;
-            background-image: 
-                radial-gradient(circle at 20% 80%, rgba(255,182,193,0.3) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(173,216,230,0.3) 0%, transparent 50%),
-                radial-gradient(circle at 40% 40%, rgba(144,238,144,0.3) 0%, transparent 50%);
-        }
-
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-
-        h1 {
-            text-align: center;
-            margin-bottom: 30px;
-            font-size: 3rem;
-            color: #444;
-            transform: rotate(-1deg);
-            text-shadow: 3px 3px 0px #ddd;
-            font-weight: bold;
-        }
-
-        .main-card {
-            margin: 20px 0;
-        }
-
-        .launchpad {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 20px;
-            padding: 30px;
-            margin-bottom: 20px;
-        }
-
-        .pad-button {
-            width: 100px;
-            height: 100px;
-            font-size: 1.8rem;
-            font-weight: bold;
-            font-family: 'Comic Sans MS', cursive;
-            cursor: pointer;
-            transition: transform 0.2s ease;
-            --wired-button-outline-color: #333;
-        }
-
-        .pad-button:hover {
-            transform: scale(1.05) rotate(2deg);
-        }
-
-        .pad-button:active {
-            transform: scale(0.95) rotate(-2deg);
-        }
-
-        .pad-button.playing {
-            animation: wobble 0.4s ease-out;
-        }
-
-        .pad-button.sound-playing {
-            animation: shake 0.6s infinite;
-            --wired-button-outline-color: #ff6b00;
-        }
-
-        .pad-button.has-sound {
-            --wired-button-outline-color: #228B22;
-        }
-
-        /* Button colors */
-        .pad-button:nth-child(1) { --wired-button-fill: #ff6b6b; }
-        .pad-button:nth-child(2) { --wired-button-fill: #4ecdc4; }
-        .pad-button:nth-child(3) { --wired-button-fill: #45b7d1; }
-        .pad-button:nth-child(4) { --wired-button-fill: #96ceb4; }
-        .pad-button:nth-child(5) { --wired-button-fill: #ffeaa7; }
-        .pad-button:nth-child(6) { --wired-button-fill: #dda0dd; }
-        .pad-button:nth-child(7) { --wired-button-fill: #ffcccb; }
-        .pad-button:nth-child(8) { --wired-button-fill: #add8e6; }
-        .pad-button:nth-child(9) { --wired-button-fill: #90ee90; }
-        .pad-button:nth-child(10) { --wired-button-fill: #f0e68c; }
-        .pad-button:nth-child(11) { --wired-button-fill: #deb887; }
-        .pad-button:nth-child(12) { --wired-button-fill: #ffa07a; }
-        .pad-button:nth-child(13) { --wired-button-fill: #98fb98; }
-        .pad-button:nth-child(14) { --wired-button-fill: #f0e68c; }
-        .pad-button:nth-child(15) { --wired-button-fill: #dda0dd; }
-        .pad-button:nth-child(16) { --wired-button-fill: #87ceeb; }
-
-        @keyframes wobble {
-            0% { transform: rotate(0deg) scale(1); }
-            25% { transform: rotate(3deg) scale(1.1); }
-            75% { transform: rotate(-3deg) scale(1.1); }
-            100% { transform: rotate(0deg) scale(1); }
-        }
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0) rotate(0deg); }
-            25% { transform: translateX(-3px) rotate(2deg); }
-            75% { transform: translateX(3px) rotate(-2deg); }
-        }
-
-        .section-title {
-            font-size: 1.6rem;
-            margin-bottom: 20px;
-            color: #444;
-            transform: rotate(-0.5deg);
-            font-weight: bold;
-            text-align: center;
-        }
-
-        .url-inputs-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 15px;
-            padding: 20px;
-        }
-
-        .url-input-row {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            transform: rotate(0.2deg);
-        }
-
-        .url-input-row:nth-child(even) {
-            transform: rotate(-0.2deg);
-        }
-
-        .url-label {
-            min-width: 60px;
-            font-weight: bold;
-            font-size: 0.9rem;
-        }
-
-        .url-input {
-            flex: 1;
-            --wired-input-font-family: 'Comic Sans MS', cursive;
-        }
-
-        .set-button {
-            width: 80px;
-            --wired-button-font-family: 'Comic Sans MS', cursive;
-            font-weight: bold;
-        }
-
-        .tts-section {
-            padding: 20px;
-        }
-
-        .tts-controls {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .tts-input {
-            flex: 1;
-            min-width: 300px;
-            --wired-input-font-family: 'Comic Sans MS', cursive;
-        }
-
-        .tts-button {
-            --wired-button-font-family: 'Comic Sans MS', cursive;
-            font-weight: bold;
-            font-size: 1rem;
-        }
-
-        .status-message {
-            text-align: center;
-            margin: 15px 0;
-            font-size: 1.1rem;
-            font-weight: bold;
-            color: #d35400;
-            min-height: 25px;
-        }
-
-        .history-section {
-            margin-top: 25px;
-            padding: 20px;
-        }
-
-        .history-container {
-            max-height: 250px;
-            overflow-y: auto;
-            margin-bottom: 15px;
-        }
-
-        .history-item {
-            margin-bottom: 10px;
-            cursor: pointer;
-            transition: transform 0.2s;
-            transform: rotate(0.1deg);
-            padding: 10px;
-        }
-
-        .history-item:nth-child(even) {
-            transform: rotate(-0.1deg);
-        }
-
-        .history-item:hover {
-            transform: rotate(0.3deg) scale(1.02);
-        }
-
-        .history-text {
-            font-size: 0.95rem;
-            margin-bottom: 8px;
-            font-weight: bold;
-        }
-
-        .history-time {
-            font-size: 0.75rem;
-            opacity: 0.7;
-        }
-
-        .clear-button {
-            --wired-button-font-family: 'Comic Sans MS', cursive;
-            font-weight: bold;
-            display: block;
-            margin: 0 auto;
-        }
-
-        .empty-history {
-            text-align: center;
-            opacity: 0.6;
-            font-style: italic;
-            padding: 20px;
-        }
-
-        /* Fallback styles if wired-elements fail to load */
-        .fallback-button {
-            font-size: 1.2rem;
-            font-weight: bold;
-            font-family: 'Comic Sans MS', cursive;
-            cursor: pointer;
-            border: 4px solid #333;
-            background: #fff;
-            color: #333;
-            border-radius: 12px;
-            transition: all 0.2s ease;
-            box-shadow: 3px 3px 6px rgba(0,0,0,0.2);
-        }
-
-        .fallback-button:hover {
-            transform: scale(1.05) rotate(1deg);
-            background: #f0f0f0;
-            box-shadow: 4px 4px 8px rgba(0,0,0,0.3);
-        }
-
-        .fallback-input {
-            font-family: 'Comic Sans MS', cursive;
-            border: 4px solid #333;
-            padding: 10px;
-            background: #fff;
-            border-radius: 8px;
-            font-size: 1rem;
-            box-shadow: 2px 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .fallback-input:focus {
-            outline: none;
-            border-color: #4ecdc4;
-            transform: rotate(0.5deg);
-        }
-
-        .fallback-card {
-            border: 4px solid #333;
-            background: rgba(255,255,255,0.9);
-            padding: 20px;
-            margin: 10px 0;
-            border-radius: 15px;
-            box-shadow: 4px 4px 8px rgba(0,0,0,0.2);
-            transform: rotate(-0.2deg);
-        }
-
-        .pad-button.fallback-button {
-            width: 100px;
-            height: 100px;
-            font-size: 1.8rem;
-        }
-
-        .tts-button.fallback-button {
-            font-size: 1rem;
-            padding: 12px 20px;
-        }
-
-        .set-button.fallback-button {
-            width: 80px;
-            padding: 8px 12px;
-            font-size: 0.8rem;
-        }
-
-        .clear-button.fallback-button {
-            padding: 10px 20px;
-            font-size: 0.9rem;
-        }
-
-        .tts-input.fallback-input {
-            flex: 1;
-            min-width: 300px;
-            height: 45px;
-        }
-
-        .url-input.fallback-input {
-            flex: 1;
-            height: 35px;
-        }
-        .loading {
-            text-align: center;
-            font-size: 1.2rem;
-            color: #666;
-            margin: 20px;
-        }
-
-        /* Responsive design */
-        @media (max-width: 768px) {
-            .launchpad {
-                grid-template-columns: repeat(4, 1fr);
-                gap: 10px;
-                padding: 15px;
-            }
-            
-            .pad-button {
-                width: 70px;
-                height: 70px;
-                font-size: 1.2rem;
-            }
-            
-            .url-inputs-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .tts-controls {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
-            .tts-input {
-                min-width: auto;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .launchpad {
-                grid-template-columns: repeat(4, 1fr);
-                gap: 8px;
-                padding: 10px;
-            }
-            
-            .pad-button {
-                width: 60px;
-                height: 60px;
-                font-size: 1rem;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🎵 Wired Sound Launchpad</h1>
-        
-        <div class="loading" id="loadingIndicator">Loading wired elements...</div>
-        
-        <div id="app" style="display: none;">
-            <wired-card class="main-card">
-                <div class="launchpad" id="launchpad">
-                    <!-- Buttons will be generated by JavaScript -->
-                </div>
-            </wired-card>
-
-            <wired-card class="main-card">
-                <h3 class="section-title">🔗 Assign Sounds to Buttons</h3>
-                <div class="url-inputs-grid" id="urlInputs">
-                    <!-- URL inputs will be generated by JavaScript -->
-                </div>
-            </wired-card>
-
-            <wired-card class="main-card tts-section">
-                <h3 class="section-title">🎤 Text-to-Speech</h3>
-                <div class="tts-controls">
-                    <wired-input 
-                        id="ttsInput" 
-                        class="tts-input"
-                        placeholder="Enter text to speak..."
-                        maxlength="200">
-                    </wired-input>
-                    <wired-button id="ttsButton" class="tts-button">▶ Speak</wired-button>
-                </div>
-                <div class="status-message" id="status"></div>
-                
-                <div class="history-section">
-                    <h4 class="section-title" style="font-size: 1.2rem;">📜 Speech History</h4>
-                    <wired-card class="history-container">
-                        <div id="historyList">
-                            <div class="empty-history">No speech history yet...</div>
-                        </div>
-                    </wired-card>
-                    <wired-button id="clearHistoryButton" class="clear-button">Clear History</wired-button>
-                </div>
-            </wired-card>
-        </div>
-    </div>
-
-    <script>
-        class WiredSoundLaunchpad {
-            constructor() {
-                this.sounds = {};
-                this.audioElements = {};
-                this.playingAudios = {};
-                this.isSpeaking = false;
-                this.speechHistory = [];
-                this.isReady = false;
-                this.init();
-            }
-
-            async init() {
-                console.log('Initializing Launchpad...');
-                
-                // Check if wired elements loaded successfully
-                this.useWiredElements = window.wiredElementsLoaded || false;
-                console.log('Using wired elements:', this.useWiredElements);
-                
-                try {
-                    if (this.useWiredElements) {
-                        // Wait for wired elements to be fully ready
-                        await this.waitForWiredElements();
-                    }
-                    
-                    // Hide loading indicator and show app
-                    document.getElementById('loadingIndicator').style.display = 'none';
-                    document.getElementById('app').style.display = 'block';
-                    
-                    // Create all elements
-                    this.createButtons();
-                    this.createUrlInputs();
-                    this.setupEventListeners();
-                    this.loadSavedUrls();
-                    
-                    this.isReady = true;
-                    console.log('Launchpad initialized successfully!');
-                    
-                } catch (error) {
-                    console.error('Failed to initialize:', error);
-                    // Fallback to regular elements
-                    this.useWiredElements = false;
-                    this.createButtons();
-                    this.createUrlInputs();
-                    this.setupEventListeners();
-                    this.loadSavedUrls();
-                    
-                    document.getElementById('loadingIndicator').style.display = 'none';
-                    document.getElementById('app').style.display = 'block';
-                }
-            }
-
-            async waitForWiredElements() {
-                console.log('Waiting for wired elements to load...');
-                
-                const elementsToWait = ['wired-button', 'wired-input', 'wired-card'];
-                const promises = elementsToWait.map(elementName => 
-                    customElements.whenDefined(elementName)
-                );
-                
-                await Promise.all(promises);
-                
-                // Give extra time for elements to fully initialize
-                await new Promise(resolve => setTimeout(resolve, 500));
-                
-                console.log('All wired elements loaded successfully');
-            }
-
-            createButtons() {
-                const launchpad = document.getElementById('launchpad');
-                console.log('Creating wired buttons from local installation...');
-                
-                for (let i = 1; i <= 16; i++) {
-                    const button = document.createElement('wired-button');
-                    button.className = 'pad-button';
-                    button.id = `pad-${i}`;
-                    button.textContent = i;
-                    button.addEventListener('click', () => this.playSound(i));
-                    
-                    launchpad.appendChild(button);
-                }
-                
-                console.log('Created', launchpad.children.length, 'wired buttons');
-            }
-
-            createUrlInputs() {
-                const container = document.getElementById('urlInputs');
-                console.log('Creating wired URL inputs...');
-                
-                for (let i = 1; i <= 16; i++) {
-                    const row = document.createElement('div');
-                    row.className = 'url-input-row';
-                    
-                    const label = document.createElement('div');
-                    label.className = 'url-label';
-                    label.textContent = `Pad ${i}:`;
-                    
-                    const input = document.createElement('wired-input');
-                    input.className = 'url-input';
-                    input.id = `url-${i}`;
-                    input.placeholder = `MP3 URL for button ${i}`;
-                    
-                    const button = document.createElement('wired-button');
-                    button.className = 'set-button';
-                    button.textContent = 'Set';
-                    button.addEventListener('click', () => this.assignSound(i));
-                    
-                    row.appendChild(label);
-                    row.appendChild(input);
-                    row.appendChild(button);
-                    container.appendChild(row);
-                }
-                
-                console.log('Created', container.children.length, 'wired URL input rows');
-            }
-
-            async assignSound(padNumber) {
-                const urlInput = document.getElementById(`url-${padNumber}`);
-                const url = urlInput.value.trim();
-                
-                if (!url) {
-                    this.showStatus('Please enter a URL');
-                    return;
-                }
-
-                try {
-                    const audio = new Audio();
-                    audio.preload = 'metadata';
-                    
-                    audio.oncanplaythrough = () => {
-                        this.sounds[padNumber] = url;
-                        this.audioElements[padNumber] = audio;
-                        this.saveUrls();
-                        this.showStatus(`✅ Sound assigned to button ${padNumber}`);
-                        
-                        // Update button appearance
-                        const button = document.getElementById(`pad-${padNumber}`);
-                        button.classList.add('has-sound');
-                    };
-                    
-                    audio.onerror = () => {
-                        this.showStatus('❌ Error: Could not load audio from this URL');
-                    };
-                    
-                    audio.src = url;
-                    
-                } catch (error) {
-                    this.showStatus('❌ Error: Invalid URL or audio format');
-                }
-            }
-
-            playSound(padNumber) {
-                if (!this.sounds[padNumber]) {
-                    this.showStatus(`No sound assigned to button ${padNumber}`);
-                    return;
-                }
-
-                const button = document.getElementById(`pad-${padNumber}`);
-                
-                // If sound is already playing, stop it
-                if (this.playingAudios[padNumber]) {
-                    this.playingAudios[padNumber].pause();
-                    this.playingAudios[padNumber].currentTime = 0;
-                    delete this.playingAudios[padNumber];
-                    button.classList.remove('sound-playing');
-                    return;
-                }
-
-                // Add click animation
-                button.classList.add('playing');
-                setTimeout(() => {
-                    button.classList.remove('playing');
-                }, 400);
-
-                // Create and play new audio
-                const audio = new Audio(this.sounds[padNumber]);
-                audio.volume = 0.7;
-                
-                // Track the playing audio
-                this.playingAudios[padNumber] = audio;
-                button.classList.add('sound-playing');
-                
-                // Remove from playing list when finished
-                audio.onended = () => {
-                    delete this.playingAudios[padNumber];
-                    button.classList.remove('sound-playing');
-                };
-                
-                audio.onerror = () => {
-                    delete this.playingAudios[padNumber];
-                    button.classList.remove('sound-playing');
-                    this.showStatus('❌ Error playing sound');
-                };
-                
-                audio.play().catch(error => {
-                    delete this.playingAudios[padNumber];
-                    button.classList.remove('sound-playing');
-                    this.showStatus('❌ Error playing sound');
-                    console.error('Audio play error:', error);
-                });
-            }
-
-            setupEventListeners() {
-                const ttsButton = document.getElementById('ttsButton');
-                const ttsInput = document.getElementById('ttsInput');
-                const clearHistoryButton = document.getElementById('clearHistoryButton');
-                
-                ttsButton.addEventListener('click', () => this.speakText());
-                
-                // Handle wired-input events properly
-                ttsInput.addEventListener('input', (e) => {
-                    // Store the current value for later use
-                    ttsInput._currentValue = e.target.value;
-                });
-                
-                // Listen for Enter key on wired-input
-                document.addEventListener('keydown', (e) => {
-                    if (e.target === ttsInput && e.key === 'Enter') {
-                        this.speakText();
-                    } else if (e.target.tagName !== 'WIRED-INPUT') {
-                        // Keyboard shortcuts for pads
-                        const keyMap = {
-                            '1': 1, '2': 2, '3': 3, '4': 4,
-                            'q': 5, 'w': 6, 'e': 7, 'r': 8,
-                            'a': 9, 's': 10, 'd': 11, 'f': 12,
-                            'z': 13, 'x': 14, 'c': 15, 'v': 16
-                        };
-                        
-                        const padNumber = keyMap[e.key.toLowerCase()];
-                        if (padNumber) {
-                            this.playSound(padNumber);
-                        }
-                    }
-                });
-
-                clearHistoryButton.addEventListener('click', () => this.clearHistory());
-            }
-
-            speakText() {
-                const ttsInputElement = document.getElementById('ttsInput');
-                const text = (ttsInputElement.value || ttsInputElement._currentValue || '').trim();
-                const button = document.getElementById('ttsButton');
-                
-                if (!text) {
-                    this.showStatus('Please enter some text to speak');
-                    return;
-                }
-
-                if (this.isSpeaking) {
-                    speechSynthesis.cancel();
-                    this.isSpeaking = false;
-                    button.textContent = '▶ Speak';
-                    return;
-                }
-
-                if ('speechSynthesis' in window) {
-                    const utterance = new SpeechSynthesisUtterance(text);
-                    
-                    utterance.onstart = () => {
-                        this.isSpeaking = true;
-                        button.textContent = '⏹ Stop';
-                        this.showStatus('🔊 Speaking...');
-                        this.addToHistory(text);
-                    };
-                    
-                    utterance.onend = () => {
-                        this.isSpeaking = false;
-                        button.textContent = '▶ Speak';
-                        this.showStatus('');
-                    };
-                    
-                    utterance.onerror = () => {
-                        this.isSpeaking = false;
-                        button.textContent = '▶ Speak';
-                        this.showStatus('❌ Error: Could not speak text');
-                    };
-                    
-                    utterance.rate = 1;
-                    utterance.pitch = 1;
-                    utterance.volume = 0.8;
-                    
-                    speechSynthesis.speak(utterance);
-                } else {
-                    this.showStatus('❌ Text-to-speech not supported in this browser');
-                }
-            }
-
-            addToHistory(text) {
-                const now = new Date();
-                const timeString = now.toLocaleTimeString();
-                
-                this.speechHistory.unshift({
-                    text: text,
-                    time: timeString
-                });
-                
-                if (this.speechHistory.length > 10) {
-                    this.speechHistory = this.speechHistory.slice(0, 10);
-                }
-                
-                this.updateHistoryDisplay();
-            }
-
-            updateHistoryDisplay() {
-                const historyList = document.getElementById('historyList');
-                
-                if (this.speechHistory.length === 0) {
-                    historyList.innerHTML = '<div class="empty-history">No speech history yet...</div>';
-                    return;
-                }
-                
-                const historyHTML = this.speechHistory.map(entry => `
-                    <wired-card class="history-item" onclick="launchpad.speakFromHistory('${entry.text.replace(/'/g, '\\\'').replace(/"/g, '&quot;')}')">
-                        <div class="history-text">"${entry.text}"</div>
-                        <div class="history-time">${entry.time}</div>
-                    </wired-card>
-                `).join('');
-                
-                historyList.innerHTML = historyHTML;
-            }
-
-            speakFromHistory(text) {
-                const ttsInput = document.getElementById('ttsInput');
-                ttsInput.value = text;
-                ttsInput._currentValue = text;
-                this.speakText();
-            }
-
-            clearHistory() {
-                this.speechHistory = [];
-                this.updateHistoryDisplay();
-                this.showStatus('🗑️ History cleared');
-            }
-
-            saveUrls() {
-                const urls = {};
-                for (let i = 1; i <= 16; i++) {
-                    const input = document.getElementById(`url-${i}`);
-                    const value = input.value || input._currentValue || '';
-                    if (value.trim()) {
-                        urls[i] = value.trim();
-                    }
-                }
-                this.savedUrls = urls;
-            }
-
-            loadSavedUrls() {
-                this.savedUrls = {};
-            }
-
-            showStatus(message) {
-                const status = document.getElementById('status');
-                status.textContent = message;
-                if (message) {
-                    setTimeout(() => {
-                        status.textContent = '';
-                    }, 4000);
-                }
-            }
-        }
-
-        // Initialize the wired launchpad after DOM is loaded
-        document.addEventListener('DOMContentLoaded', () => {
-            window.launchpad = new WiredSoundLaunchpad();
-        });
-    </script>
-</body>
+    // Initialize the app
+    new TextToSpeechApp();
+  </script>
 </html>
