@@ -1,5 +1,9 @@
 {
   "dependencies": {
-    "roughjs": "^4.6.6"
+    "@lit/reactive-element": "^2.1.0",
+    "lit": "^3.3.0",
+    "lit-html": "^3.3.0",
+    "roughjs": "^4.6.6",
+    "wired-elements": "^3.0.0-rc.6"
   }
 }
