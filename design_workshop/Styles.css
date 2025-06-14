@@ -31,7 +31,7 @@ wired-input {
 wired-textarea {
   margin: 10px 0;
   box-sizing: border-box;
-  /* max-width: 100%; */
+  max-width: 100%;
 }
 .launchpad-grid {
   display: grid;
@@ -175,4 +175,35 @@ wired-textarea {
   color: #666;
   font-style: italic;
   padding: 20px;
+}
+/* Side-by-side layout for launchpad and assign sounds */
+.main-sections {
+  display: flex;
+  gap: 20px;
+  max-width: 900px;
+  margin: 0 auto;
+  flex-wrap: wrap;
+}
+
+.launchpad-section,
+.assign-section {
+  flex: 1;
+  min-width: 350px;
+}
+
+.launchpad-section wired-card,
+.assign-section wired-card {
+  max-width: none;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .main-sections {
+    flex-direction: column;
+  }
+  
+  .launchpad-section,
+  .assign-section {
+    min-width: auto;
+  }
 }
