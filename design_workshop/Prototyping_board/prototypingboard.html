@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wizard of Oz UI Prototyping</title>
+    <link href="https://fonts.googleapis.com/css?family=Gloria+Hallelujah&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            max-width: 1200px;
+            width: 100%;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .mode-selector {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+
+        .mode-btn {
+            padding: 10px 20px;
+            border: 2px solid white;
+            background: transparent;
+            color: white;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .mode-btn.active {
+            background: white;
+            color: #4facfe;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .toolbar {
+            width: 250px;
+            background: #f8f9fa;
+            border-right: 1px solid #e0e0e0;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .toolbar h3 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .tool-category {
+            margin-bottom: 20px;
+        }
+
+        .tool-btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 8px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 14px;
+            text-align: left;
+        }
+
+        .tool-btn:hover {
+            border-color: #4facfe;
+            background: #f0f8ff;
+        }
+
+        .tool-btn.active {
+            border-color: #4facfe;
+            background: #4facfe;
+            color: white;
+        }
+
+        .phone-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+            background: #fafafa;
+        }
+
+        .phone {
+            width: 320px;
+            height: 640px;
+            background: #000;
+            border-radius: 25px;
+            padding: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        .phone-screen {
+            width: 100%;
+            height: 100%;
+            background: white;
+            border-radius: 20px;
+            position: relative;
+            overflow: hidden;
+            cursor: crosshair;
+        }
+
+        .phone-screen.user-mode {
+            cursor: default;
+        }
+
+        .ui-element {
+            position: absolute;
+            border: 2px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .ui-element:hover {
+            border-color: #4facfe;
+        }
+
+        .ui-element.selected {
+            border-color: #ff4757;
+            box-shadow: 0 0 10px rgba(255, 71, 87, 0.3);
+        }
+
+        .ui-button {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+            min-width: 80px;
+            min-height: 40px;
+            cursor: pointer;
+        }
+
+        .ui-textbox {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 14px;
+            min-width: 120px;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+        }
+
+        .ui-text {
+            color: #333;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            padding: 5px;
+            min-width: 50px;
+            min-height: 25px;
+            word-wrap: break-word;
+        }
+
+        .ui-rectangle {
+            background: linear-gradient(45deg, #ff9a9e 0%, #fecfef 100%);
+            border-radius: 8px;
+            min-width: 60px;
+            min-height: 60px;
+        }
+
+        .ui-triangle {
+            width: 0;
+            height: 0;
+            border-left: 30px solid transparent;
+            border-right: 30px solid transparent;
+            border-bottom: 52px solid #feca57;
+            min-width: 60px;
+            min-height: 52px;
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            border-radius: 20px;
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .connected {
+            background: #2ed573;
+        }
+
+        .disconnected {
+            background: #ff4757;
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            width: 20px;
+            height: 20px;
+            background: #ff4757;
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+            display: none;
+        }
+
+        .ui-element.selected .delete-btn {
+            display: block;
+        }
+
+        .properties-panel {
+            position: fixed;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 20px;
+            width: 250px;
+            display: none;
+        }
+
+        .properties-panel.show {
+            display: block;
+        }
+
+        .property-group {
+            margin-bottom: 15px;
+        }
+
+        .property-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #666;
+            font-weight: 600;
+        }
+
+        .property-group input, .property-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                height: 100vh;
+                border-radius: 0;
+            }
+            
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .toolbar {
+                width: 100%;
+                height: 150px;
+                border-right: none;
+                border-bottom: 1px solid #e0e0e0;
+                display: flex;
+                gap: 10px;
+                align-items: center;
+                overflow-x: auto;
+            }
+            
+            .tool-category {
+                display: flex;
+                gap: 10px;
+                margin: 0;
+                min-width: max-content;
+            }
+            
+            .tool-btn {
+                margin: 0;
+                white-space: nowrap;
+                min-width: 80px;
+            }
+            
+            .phone {
+                width: 280px;
+                height: 560px;
+            }
+            
+            .properties-panel {
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                left: 20px;
+                top: auto;
+                transform: none;
+                width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧙‍♂️ Wizard of Oz UI Prototyping</h1>
+            <div class="mode-selector">
+                <button class="mode-btn active" data-mode="wizard">🧙‍♂️ Wizard Mode</button>
+                <button class="mode-btn" data-mode="user">👤 User Mode</button>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="toolbar" id="toolbar">
+                <div class="tool-category">
+                    <h3>Components</h3>
+                    <button class="tool-btn" data-tool="button">📱 Button</button>
+                    <button class="tool-btn" data-tool="textbox">📝 Text Box</button>
+                    <button class="tool-btn" data-tool="text">🔤 Text</button>
+                </div>
+                
+                <div class="tool-category">
+                    <h3>Shapes</h3>
+                    <button class="tool-btn" data-tool="rectangle">⬜ Rectangle</button>
+                    <button class="tool-btn" data-tool="triangle">🔺 Triangle</button>
+                </div>
+                
+                <div class="tool-category">
+                    <h3>Actions</h3>
+                    <button class="tool-btn" data-tool="select">👆 Select</button>
+                    <button class="tool-btn" data-tool="clear">🗑️ Clear All</button>
+                </div>
+            </div>
+            
+            <div class="phone-container">
+                <div class="phone">
+                    <div class="phone-screen" id="phoneScreen">
+                        <!-- UI elements will be dynamically added here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="connection-status connected" id="connectionStatus">
+        🟢 Connected
+    </div>
+    
+    <div class="properties-panel" id="propertiesPanel">
+        <h3>Element Properties</h3>
+        <div class="property-group">
+            <label>Text Content:</label>
+            <input type="text" id="elementText" placeholder="Enter text...">
+        </div>
+        <div class="property-group">
+            <label>Width (px):</label>
+            <input type="number" id="elementWidth" min="20" max="280">
+        </div>
+        <div class="property-group">
+            <label>Height (px):</label>
+            <input type="number" id="elementHeight" min="20" max="600">
+        </div>
+        <div class="property-group">
+            <label>Background Color:</label>
+            <input type="color" id="elementColor">
+        </div>
+    </div>
+
+    <script>
+        class WizardOfOzApp {
+            constructor() {
+                this.mode = 'wizard';
+                this.selectedTool = 'select';
+                this.selectedElement = null;
+                this.elements = [];
+                this.elementCounter = 0;
+                this.isDragging = false;
+                this.dragOffset = { x: 0, y: 0 };
+                
+                this.initializeEventListeners();
+                this.simulateConnection();
+            }
+            
+            initializeEventListeners() {
+                // Mode selection
+                document.querySelectorAll('.mode-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        this.switchMode(e.target.dataset.mode);
+                    });
+                });
+                
+                // Tool selection
+                document.querySelectorAll('.tool-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        this.selectTool(e.target.dataset.tool);
+                    });
+                });
+                
+                // Phone screen interactions
+                const phoneScreen = document.getElementById('phoneScreen');
+                phoneScreen.addEventListener('click', (e) => {
+                    if (this.mode === 'wizard') {
+                        this.handleScreenClick(e);
+                    }
+                });
+                
+                phoneScreen.addEventListener('mousedown', (e) => {
+                    if (this.mode === 'wizard') {
+                        this.handleMouseDown(e);
+                    }
+                });
+                
+                document.addEventListener('mousemove', (e) => {
+                    this.handleMouseMove(e);
+                });
+                
+                document.addEventListener('mouseup', () => {
+                    this.handleMouseUp();
+                });
+                
+                // Properties panel
+                document.getElementById('elementText').addEventListener('input', (e) => {
+                    this.updateElementProperty('text', e.target.value);
+                });
+                
+                document.getElementById('elementWidth').addEventListener('input', (e) => {
+                    this.updateElementProperty('width', e.target.value + 'px');
+                });
+                
+                document.getElementById('elementHeight').addEventListener('input', (e) => {
+                    this.updateElementProperty('height', e.target.value + 'px');
+                });
+                
+                document.getElementById('elementColor').addEventListener('input', (e) => {
+                    this.updateElementProperty('background', e.target.value);
+                });
+            }
+            
+            switchMode(mode) {
+                this.mode = mode;
+                document.querySelectorAll('.mode-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.mode === mode);
+                });
+                
+                const toolbar = document.getElementById('toolbar');
+                const phoneScreen = document.getElementById('phoneScreen');
+                
+                if (mode === 'user') {
+                    toolbar.style.display = 'none';
+                    phoneScreen.classList.add('user-mode');
+                    document.getElementById('propertiesPanel').classList.remove('show');
+                } else {
+                    toolbar.style.display = 'block';
+                    phoneScreen.classList.remove('user-mode');
+                }
+                
+                this.deselectElement();
+            }
+            
+            selectTool(tool) {
+                if (tool === 'clear') {
+                    this.clearAll();
+                    return;
+                }
+                
+                this.selectedTool = tool;
+                document.querySelectorAll('.tool-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.tool === tool);
+                });
+                
+                const phoneScreen = document.getElementById('phoneScreen');
+                phoneScreen.style.cursor = tool === 'select' ? 'default' : 'crosshair';
+            }
+            
+            handleScreenClick(e) {
+                if (this.isDragging) return;
+                
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                if (this.selectedTool === 'select') {
+                    const clickedElement = e.target.closest('.ui-element');
+                    if (clickedElement) {
+                        this.selectElement(clickedElement);
+                    } else {
+                        this.deselectElement();
+                    }
+                } else {
+                    this.createElement(this.selectedTool, x, y);
+                }
+            }
+            
+            createElement(type, x, y) {
+                const element = document.createElement('div');
+                element.className = `ui-element ui-${type}`;
+                element.dataset.id = ++this.elementCounter;
+                element.dataset.type = type;
+                
+                // Position the element
+                element.style.left = x + 'px';
+                element.style.top = y + 'px';
+                
+                // Set default content and styles based on type
+                switch (type) {
+                    case 'button':
+                        element.textContent = 'Button';
+                        element.style.width = '80px';
+                        element.style.height = '40px';
+                        break;
+                    case 'textbox':
+                        element.textContent = 'Text input';
+                        element.style.width = '120px';
+                        element.style.height = '40px';
+                        break;
+                    case 'text':
+                        element.textContent = 'Text';
+                        element.style.width = 'auto';
+                        element.style.height = 'auto';
+                        break;
+                    case 'rectangle':
+                        element.style.width = '80px';
+                        element.style.height = '60px';
+                        break;
+                    case 'triangle':
+                        element.style.width = '60px';
+                        element.style.height = '52px';
+                        break;
+                }
+                
+                // Add delete button
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-btn';
+                deleteBtn.innerHTML = '×';
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.deleteElement(element);
+                });
+                element.appendChild(deleteBtn);
+                
+                document.getElementById('phoneScreen').appendChild(element);
+                this.elements.push(element);
+                
+                // Auto-select the new element
+                this.selectElement(element);
+                
+                // Simulate syncing to user device
+                this.simulateSync();
+            }
+            
+            selectElement(element) {
+                this.deselectElement();
+                this.selectedElement = element;
+                element.classList.add('selected');
+                this.showPropertiesPanel(element);
+            }
+            
+            deselectElement() {
+                if (this.selectedElement) {
+                    this.selectedElement.classList.remove('selected');
+                    this.selectedElement = null;
+                }
+                document.getElementById('propertiesPanel').classList.remove('show');
+            }
+            
+            deleteElement(element) {
+                element.remove();
+                this.elements = this.elements.filter(el => el !== element);
+                if (this.selectedElement === element) {
+                    this.deselectElement();
+                }
+                this.simulateSync();
+            }
+            
+            clearAll() {
+                this.elements.forEach(element => element.remove());
+                this.elements = [];
+                this.deselectElement();
+                this.simulateSync();
+            }
+            
+            showPropertiesPanel(element) {
+                const panel = document.getElementById('propertiesPanel');
+                const textInput = document.getElementById('elementText');
+                const widthInput = document.getElementById('elementWidth');
+                const heightInput = document.getElementById('elementHeight');
+                const colorInput = document.getElementById('elementColor');
+                
+                // Set current values
+                textInput.value = element.textContent || '';
+                widthInput.value = parseInt(element.style.width) || '';
+                heightInput.value = parseInt(element.style.height) || '';
+                
+                // Show/hide relevant inputs based on element type
+                const type = element.dataset.type;
+                textInput.parentElement.style.display = 
+                    ['button', 'textbox', 'text'].includes(type) ? 'block' : 'none';
+                
+                panel.classList.add('show');
+            }
+            
+            updateElementProperty(property, value) {
+                if (!this.selectedElement) return;
+                
+                switch (property) {
+                    case 'text':
+                        this.selectedElement.textContent = value;
+                        break;
+                    case 'width':
+                        this.selectedElement.style.width = value;
+                        break;
+                    case 'height':
+                        this.selectedElement.style.height = value;
+                        break;
+                    case 'background':
+                        if (this.selectedElement.dataset.type === 'rectangle') {
+                            this.selectedElement.style.background = value;
+                        }
+                        break;
+                }
+                
+                this.simulateSync();
+            }
+            
+            handleMouseDown(e) {
+                const clickedElement = e.target.closest('.ui-element');
+                if (clickedElement && this.selectedTool === 'select') {
+                    this.isDragging = true;
+                    this.selectElement(clickedElement);
+                    
+                    const rect = clickedElement.getBoundingClientRect();
+                    this.dragOffset = {
+                        x: e.clientX - rect.left,
+                        y: e.clientY - rect.top
+                    };
+                    
+                    e.preventDefault();
+                }
+            }
+            
+            handleMouseMove(e) {
+                if (this.isDragging && this.selectedElement) {
+                    const phoneScreen = document.getElementById('phoneScreen');
+                    const screenRect = phoneScreen.getBoundingClientRect();
+                    
+                    const newX = e.clientX - screenRect.left - this.dragOffset.x;
+                    const newY = e.clientY - screenRect.top - this.dragOffset.y;
+                    
+                    // Keep element within bounds
+                    const maxX = phoneScreen.offsetWidth - this.selectedElement.offsetWidth;
+                    const maxY = phoneScreen.offsetHeight - this.selectedElement.offsetHeight;
+                    
+                    this.selectedElement.style.left = Math.max(0, Math.min(newX, maxX)) + 'px';
+                    this.selectedElement.style.top = Math.max(0, Math.min(newY, maxY)) + 'px';
+                }
+            }
+            
+            handleMouseUp() {
+                if (this.isDragging) {
+                    this.isDragging = false;
+                    this.simulateSync();
+                }
+            }
+            
+            simulateConnection() {
+                // Simulate connection status changes
+                const statusEl = document.getElementById('connectionStatus');
+                
+                setInterval(() => {
+                    // Randomly simulate connection issues (very rarely)
+                    if (Math.random() < 0.02) {
+                        statusEl.textContent = '🔴 Reconnecting...';
+                        statusEl.className = 'connection-status disconnected';
+                        
+                        setTimeout(() => {
+                            statusEl.textContent = '🟢 Connected';
+                            statusEl.className = 'connection-status connected';
+                        }, 1000 + Math.random() * 2000);
+                    }
+                }, 5000);
+            }
+            
+            simulateSync() {
+                // In a real implementation, this would sync the UI state
+                // to the user's device via WebSocket or similar technology
+                console.log('Syncing UI state to user device...', {
+                    elements: this.elements.length,
+                    timestamp: new Date().toISOString()
+                });
+                
+                // Visual feedback
+                const statusEl = document.getElementById('connectionStatus');
+                const originalText = statusEl.textContent;
+                statusEl.textContent = '📡 Syncing...';
+                
+                setTimeout(() => {
+                    statusEl.textContent = originalText;
+                }, 500);
+            }
+        }
+        
+        // Initialize the app
+        const app = new WizardOfOzApp();
+        
+        // Add some demo content
+        setTimeout(() => {
+            if (app.mode === 'wizard') {
+                // Add a welcome message
+                const welcomeText = document.createElement('div');
+                welcomeText.className = 'ui-element ui-text';
+                welcomeText.textContent = 'Welcome! Try adding some UI elements.';
+                welcomeText.style.left = '20px';
+                welcomeText.style.top = '20px';
+                welcomeText.style.fontSize = '18px';
+                welcomeText.style.fontWeight = 'bold';
+                welcomeText.style.color = '#4facfe';
+                welcomeText.dataset.id = ++app.elementCounter;
+                welcomeText.dataset.type = 'text';
+                
+                document.getElementById('phoneScreen').appendChild(welcomeText);
+                app.elements.push(welcomeText);
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
