@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wizard of Oz UI Prototyping</title>
-    <link href="https://fonts.googleapis.com/css?family=Gloria+Hallelujah&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css" />
     <style>
         * {
             margin: 0;
@@ -40,6 +38,29 @@
             color: white;
             padding: 20px;
             text-align: center;
+        }
+
+        .session-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .session-id {
+            background: rgba(255,255,255,0.2);
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-family: monospace;
+            cursor: pointer;
+        }
+
+        .client-count {
+            display: flex;
+            gap: 5px;
+            align-items: center;
         }
 
         .mode-selector {
@@ -235,6 +256,10 @@
             background: #ff4757;
         }
 
+        .syncing {
+            background: #ffa502;
+        }
+
         .delete-btn {
             position: absolute;
             top: -10px;
@@ -289,6 +314,29 @@
             border: 1px solid #e0e0e0;
             border-radius: 5px;
             font-size: 14px;
+        }
+
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2ed573;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+        }
+
+        .notification.show {
+            opacity: 1;
+        }
+
+        .notification.warning {
+            background: #ffa502;
         }
 
         @media (max-width: 768px) {
@@ -346,6 +394,14 @@
     <div class="container">
         <div class="header">
             <h1>🧙‍♂️ Wizard of Oz UI Prototyping</h1>
+            <div class="session-info">
+                <div class="session-id" id="sessionId">Session: Loading...</div>
+                <div class="client-count">
+                    <span>👥</span>
+                    <span id="clientCount">1</span>
+                    <span>connected</span>
+                </div>
+            </div>
             <div class="mode-selector">
                 <button class="mode-btn active" data-mode="wizard">🧙‍♂️ Wizard Mode</button>
                 <button class="mode-btn" data-mode="user">👤 User Mode</button>
@@ -408,118 +464,331 @@
         </div>
     </div>
 
+    <div class="notification" id="notification"></div>
+
     <script>
+        // Simple shared state management
+        class SharedUIState {
+            constructor() {
+                this.sessionId = this.generateSessionId();
+                this.clientId = this.generateClientId();
+                this.storageKey = `wizard-ui-${this.sessionId}`;
+                this.heartbeatKey = `wizard-heartbeat-${this.sessionId}`;
+                
+                this.state = { elements: [], lastUpdate: Date.now() };
+                this.clients = new Set([this.clientId]);
+                
+                this.loadFromStorage();
+                this.setupSync();
+                this.startHeartbeat();
+            }
+            
+            generateSessionId() {
+                const urlParams = new URLSearchParams(window.location.search);
+                return urlParams.get('session') || 'demo-' + Math.random().toString(36).substr(2, 6);
+            }
+            
+            generateClientId() {
+                return 'client-' + Math.random().toString(36).substr(2, 8);
+            }
+            
+            loadFromStorage() {
+                try {
+                    const stored = localStorage.getItem(this.storageKey);
+                    if (stored) {
+                        const data = JSON.parse(stored);
+                        this.state = data.state || this.state;
+                        this.clients = new Set(data.clients || [this.clientId]);
+                    }
+                } catch (e) {
+                    console.warn('Failed to load state:', e);
+                }
+                this.clients.add(this.clientId);
+                this.saveToStorage();
+            }
+            
+            saveToStorage() {
+                try {
+                    const data = {
+                        state: this.state,
+                        clients: Array.from(this.clients),
+                        lastUpdate: Date.now()
+                    };
+                    localStorage.setItem(this.storageKey, JSON.stringify(data));
+                } catch (e) {
+                    console.warn('Failed to save state:', e);
+                }
+            }
+            
+            updateState(newState) {
+                this.state = { ...newState, lastUpdate: Date.now() };
+                this.saveToStorage();
+                this.triggerSync();
+            }
+            
+            setupSync() {
+                // Listen for storage changes
+                window.addEventListener('storage', (e) => {
+                    if (e.key === this.storageKey) {
+                        this.handleRemoteUpdate();
+                    }
+                });
+                
+                // Check for updates periodically
+                setInterval(() => this.checkForUpdates(), 1000);
+            }
+            
+            handleRemoteUpdate() {
+                try {
+                    const stored = localStorage.getItem(this.storageKey);
+                    if (stored) {
+                        const data = JSON.parse(stored);
+                        if (data.state.lastUpdate > this.state.lastUpdate) {
+                            this.state = data.state;
+                            this.clients = new Set(data.clients);
+                            if (this.onStateUpdate) this.onStateUpdate(this.state);
+                            if (this.onClientsUpdate) this.onClientsUpdate(this.clients.size);
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Failed to handle remote update:', e);
+                }
+            }
+            
+            checkForUpdates() {
+                // Clean up inactive clients
+                try {
+                    const heartbeats = JSON.parse(localStorage.getItem(this.heartbeatKey) || '{}');
+                    const now = Date.now();
+                    let changed = false;
+                    
+                    for (const [clientId, timestamp] of Object.entries(heartbeats)) {
+                        if (now - timestamp > 20000) { // 20 second timeout
+                            this.clients.delete(clientId);
+                            delete heartbeats[clientId];
+                            changed = true;
+                        }
+                    }
+                    
+                    if (changed) {
+                        localStorage.setItem(this.heartbeatKey, JSON.stringify(heartbeats));
+                        if (this.onClientsUpdate) this.onClientsUpdate(this.clients.size);
+                    }
+                } catch (e) {
+                    console.warn('Failed to check updates:', e);
+                }
+            }
+            
+            startHeartbeat() {
+                this.sendHeartbeat();
+                setInterval(() => this.sendHeartbeat(), 5000);
+            }
+            
+            sendHeartbeat() {
+                try {
+                    const heartbeats = JSON.parse(localStorage.getItem(this.heartbeatKey) || '{}');
+                    heartbeats[this.clientId] = Date.now();
+                    localStorage.setItem(this.heartbeatKey, JSON.stringify(heartbeats));
+                } catch (e) {
+                    console.warn('Failed to send heartbeat:', e);
+                }
+            }
+            
+            triggerSync() {
+                // Trigger custom event for same-tab sync
+                window.dispatchEvent(new CustomEvent('wizard-sync', { 
+                    detail: { sessionId: this.sessionId, clientId: this.clientId } 
+                }));
+            }
+        }
+
+        // Main application class
         class WizardOfOzApp {
             constructor() {
+                console.log('Initializing Wizard of Oz App...');
+                
+                // Initialize properties
+                this.sharedState = new SharedUIState();
                 this.mode = 'wizard';
                 this.selectedTool = 'select';
                 this.selectedElement = null;
-                this.elements = [];
                 this.elementCounter = 0;
                 this.isDragging = false;
                 this.dragOffset = { x: 0, y: 0 };
                 
-                this.initializeEventListeners();
-                this.simulateConnection();
+                // Wait for DOM to be ready
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', () => this.initialize());
+                } else {
+                    this.initialize();
+                }
             }
             
-            initializeEventListeners() {
-                // Mode selection
-                document.querySelectorAll('.mode-btn').forEach(btn => {
+            initialize() {
+                console.log('Setting up event listeners...');
+                this.setupEventListeners();
+                this.setupSharedState();
+                this.updateUI();
+                this.showWelcomeMessage();
+            }
+            
+            setupEventListeners() {
+                // Mode selection buttons
+                const modeButtons = document.querySelectorAll('.mode-btn');
+                console.log('Found mode buttons:', modeButtons.length);
+                modeButtons.forEach(btn => {
                     btn.addEventListener('click', (e) => {
+                        console.log('Mode button clicked:', e.target.dataset.mode);
                         this.switchMode(e.target.dataset.mode);
                     });
                 });
                 
-                // Tool selection
-                document.querySelectorAll('.tool-btn').forEach(btn => {
+                // Tool selection buttons
+                const toolButtons = document.querySelectorAll('.tool-btn');
+                console.log('Found tool buttons:', toolButtons.length);
+                toolButtons.forEach(btn => {
                     btn.addEventListener('click', (e) => {
+                        console.log('Tool button clicked:', e.target.dataset.tool);
                         this.selectTool(e.target.dataset.tool);
                     });
                 });
                 
                 // Phone screen interactions
                 const phoneScreen = document.getElementById('phoneScreen');
-                phoneScreen.addEventListener('click', (e) => {
-                    if (this.mode === 'wizard') {
-                        this.handleScreenClick(e);
-                    }
-                });
+                if (phoneScreen) {
+                    phoneScreen.addEventListener('click', (e) => this.handleScreenClick(e));
+                    phoneScreen.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+                }
                 
-                phoneScreen.addEventListener('mousedown', (e) => {
-                    if (this.mode === 'wizard') {
-                        this.handleMouseDown(e);
-                    }
-                });
+                // Global mouse events
+                document.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+                document.addEventListener('mouseup', () => this.handleMouseUp());
                 
-                document.addEventListener('mousemove', (e) => {
-                    this.handleMouseMove(e);
-                });
+                // Properties panel inputs
+                const textInput = document.getElementById('elementText');
+                const widthInput = document.getElementById('elementWidth');
+                const heightInput = document.getElementById('elementHeight');
+                const colorInput = document.getElementById('elementColor');
                 
-                document.addEventListener('mouseup', () => {
-                    this.handleMouseUp();
-                });
+                if (textInput) textInput.addEventListener('input', (e) => this.updateElementProperty('text', e.target.value));
+                if (widthInput) widthInput.addEventListener('input', (e) => this.updateElementProperty('width', e.target.value + 'px'));
+                if (heightInput) heightInput.addEventListener('input', (e) => this.updateElementProperty('height', e.target.value + 'px'));
+                if (colorInput) colorInput.addEventListener('input', (e) => this.updateElementProperty('background', e.target.value));
                 
-                // Properties panel
-                document.getElementById('elementText').addEventListener('input', (e) => {
-                    this.updateElementProperty('text', e.target.value);
-                });
+                // Session sharing
+                const sessionId = document.getElementById('sessionId');
+                if (sessionId) {
+                    sessionId.addEventListener('click', () => this.shareSession());
+                    sessionId.style.cursor = 'pointer';
+                    sessionId.title = 'Click to copy session URL';
+                }
                 
-                document.getElementById('elementWidth').addEventListener('input', (e) => {
-                    this.updateElementProperty('width', e.target.value + 'px');
-                });
+                console.log('Event listeners set up successfully');
+            }
+            
+            setupSharedState() {
+                // Set up shared state callbacks
+                this.sharedState.onStateUpdate = (state) => {
+                    console.log('Received state update:', state);
+                    this.syncFromSharedState(state);
+                };
                 
-                document.getElementById('elementHeight').addEventListener('input', (e) => {
-                    this.updateElementProperty('height', e.target.value + 'px');
-                });
+                this.sharedState.onClientsUpdate = (count) => {
+                    console.log('Client count updated:', count);
+                    const clientCountEl = document.getElementById('clientCount');
+                    if (clientCountEl) clientCountEl.textContent = count;
+                };
                 
-                document.getElementById('elementColor').addEventListener('input', (e) => {
-                    this.updateElementProperty('background', e.target.value);
-                });
+                // Display session info
+                const sessionIdEl = document.getElementById('sessionId');
+                if (sessionIdEl) {
+                    sessionIdEl.textContent = `Session: ${this.sharedState.sessionId}`;
+                }
+                
+                // Load initial state
+                this.syncFromSharedState(this.sharedState.state);
             }
             
             switchMode(mode) {
+                console.log('Switching to mode:', mode);
                 this.mode = mode;
+                this.sharedState.setRole = (mode === 'wizard');
+                
+                // Update mode buttons
                 document.querySelectorAll('.mode-btn').forEach(btn => {
                     btn.classList.toggle('active', btn.dataset.mode === mode);
                 });
                 
+                // Show/hide toolbar and update UI
                 const toolbar = document.getElementById('toolbar');
                 const phoneScreen = document.getElementById('phoneScreen');
+                const propertiesPanel = document.getElementById('propertiesPanel');
                 
                 if (mode === 'user') {
-                    toolbar.style.display = 'none';
-                    phoneScreen.classList.add('user-mode');
-                    document.getElementById('propertiesPanel').classList.remove('show');
+                    if (toolbar) toolbar.style.display = 'none';
+                    if (phoneScreen) phoneScreen.classList.add('user-mode');
+                    if (propertiesPanel) propertiesPanel.classList.remove('show');
+                    
+                    // Remove delete buttons in user mode
+                    document.querySelectorAll('.delete-btn').forEach(btn => btn.remove());
+                    this.showNotification('👤 User Mode - View Only');
                 } else {
-                    toolbar.style.display = 'block';
-                    phoneScreen.classList.remove('user-mode');
+                    if (toolbar) toolbar.style.display = 'block';
+                    if (phoneScreen) phoneScreen.classList.remove('user-mode');
+                    
+                    // Re-add delete buttons in wizard mode
+                    this.addDeleteButtonsToElements();
+                    this.showNotification('🧙‍♂️ Wizard Mode - Edit Enabled');
                 }
                 
                 this.deselectElement();
             }
             
+            addDeleteButtonsToElements() {
+                document.querySelectorAll('.ui-element').forEach(el => {
+                    if (!el.querySelector('.delete-btn')) {
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.className = 'delete-btn';
+                        deleteBtn.innerHTML = '×';
+                        deleteBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            this.deleteElement(el);
+                        });
+                        el.appendChild(deleteBtn);
+                    }
+                });
+            }
+            
             selectTool(tool) {
+                console.log('Selecting tool:', tool);
+                
                 if (tool === 'clear') {
                     this.clearAll();
                     return;
                 }
                 
                 this.selectedTool = tool;
+                
+                // Update tool buttons
                 document.querySelectorAll('.tool-btn').forEach(btn => {
                     btn.classList.toggle('active', btn.dataset.tool === tool);
                 });
                 
+                // Update cursor
                 const phoneScreen = document.getElementById('phoneScreen');
-                phoneScreen.style.cursor = tool === 'select' ? 'default' : 'crosshair';
+                if (phoneScreen) {
+                    phoneScreen.style.cursor = tool === 'select' ? 'default' : 'crosshair';
+                }
             }
             
             handleScreenClick(e) {
-                if (this.isDragging) return;
+                if (this.mode !== 'wizard' || this.isDragging) return;
                 
                 const rect = e.currentTarget.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
+                
+                console.log('Screen clicked at:', x, y, 'with tool:', this.selectedTool);
                 
                 if (this.selectedTool === 'select') {
                     const clickedElement = e.target.closest('.ui-element');
@@ -534,6 +803,8 @@
             }
             
             createElement(type, x, y) {
+                console.log('Creating element:', type, 'at', x, y);
+                
                 const element = document.createElement('div');
                 element.className = `ui-element ui-${type}`;
                 element.dataset.id = ++this.elementCounter;
@@ -543,7 +814,27 @@
                 element.style.left = x + 'px';
                 element.style.top = y + 'px';
                 
-                // Set default content and styles based on type
+                // Set default content and styles
+                this.setElementDefaults(element, type);
+                
+                // Add delete button for wizard mode
+                if (this.mode === 'wizard') {
+                    this.addDeleteButton(element);
+                }
+                
+                // Add to screen
+                const phoneScreen = document.getElementById('phoneScreen');
+                if (phoneScreen) {
+                    phoneScreen.appendChild(element);
+                }
+                
+                // Auto-select and sync
+                this.selectElement(element);
+                this.syncToSharedState();
+                this.showNotification(`Created ${type} element`);
+            }
+            
+            setElementDefaults(element, type) {
                 switch (type) {
                     case 'button':
                         element.textContent = 'Button';
@@ -569,8 +860,9 @@
                         element.style.height = '52px';
                         break;
                 }
-                
-                // Add delete button
+            }
+            
+            addDeleteButton(element) {
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'delete-btn';
                 deleteBtn.innerHTML = '×';
@@ -579,15 +871,6 @@
                     this.deleteElement(element);
                 });
                 element.appendChild(deleteBtn);
-                
-                document.getElementById('phoneScreen').appendChild(element);
-                this.elements.push(element);
-                
-                // Auto-select the new element
-                this.selectElement(element);
-                
-                // Simulate syncing to user device
-                this.simulateSync();
             }
             
             selectElement(element) {
@@ -602,43 +885,48 @@
                     this.selectedElement.classList.remove('selected');
                     this.selectedElement = null;
                 }
-                document.getElementById('propertiesPanel').classList.remove('show');
+                const propertiesPanel = document.getElementById('propertiesPanel');
+                if (propertiesPanel) {
+                    propertiesPanel.classList.remove('show');
+                }
             }
             
             deleteElement(element) {
                 element.remove();
-                this.elements = this.elements.filter(el => el !== element);
                 if (this.selectedElement === element) {
                     this.deselectElement();
                 }
-                this.simulateSync();
+                this.syncToSharedState();
+                this.showNotification('Element deleted');
             }
             
             clearAll() {
-                this.elements.forEach(element => element.remove());
-                this.elements = [];
+                document.querySelectorAll('.ui-element').forEach(el => el.remove());
                 this.deselectElement();
-                this.simulateSync();
+                this.syncToSharedState();
+                this.showNotification('All elements cleared');
             }
             
             showPropertiesPanel(element) {
+                if (this.mode !== 'wizard') return;
+                
                 const panel = document.getElementById('propertiesPanel');
                 const textInput = document.getElementById('elementText');
                 const widthInput = document.getElementById('elementWidth');
                 const heightInput = document.getElementById('elementHeight');
-                const colorInput = document.getElementById('elementColor');
                 
-                // Set current values
-                textInput.value = element.textContent || '';
-                widthInput.value = parseInt(element.style.width) || '';
-                heightInput.value = parseInt(element.style.height) || '';
+                if (textInput) textInput.value = element.textContent.replace('×', '') || '';
+                if (widthInput) widthInput.value = parseInt(element.style.width) || '';
+                if (heightInput) heightInput.value = parseInt(element.style.height) || '';
                 
-                // Show/hide relevant inputs based on element type
+                // Show/hide relevant inputs
                 const type = element.dataset.type;
-                textInput.parentElement.style.display = 
-                    ['button', 'textbox', 'text'].includes(type) ? 'block' : 'none';
+                const textGroup = textInput ? textInput.parentElement : null;
+                if (textGroup) {
+                    textGroup.style.display = ['button', 'textbox', 'text'].includes(type) ? 'block' : 'none';
+                }
                 
-                panel.classList.add('show');
+                if (panel) panel.classList.add('show');
             }
             
             updateElementProperty(property, value) {
@@ -647,6 +935,10 @@
                 switch (property) {
                     case 'text':
                         this.selectedElement.textContent = value;
+                        // Re-add delete button if needed
+                        if (this.mode === 'wizard' && !this.selectedElement.querySelector('.delete-btn')) {
+                            this.addDeleteButton(this.selectedElement);
+                        }
                         break;
                     case 'width':
                         this.selectedElement.style.width = value;
@@ -661,10 +953,12 @@
                         break;
                 }
                 
-                this.simulateSync();
+                this.syncToSharedState();
             }
             
             handleMouseDown(e) {
+                if (this.mode !== 'wizard') return;
+                
                 const clickedElement = e.target.closest('.ui-element');
                 if (clickedElement && this.selectedTool === 'select') {
                     this.isDragging = true;
@@ -681,88 +975,194 @@
             }
             
             handleMouseMove(e) {
-                if (this.isDragging && this.selectedElement) {
-                    const phoneScreen = document.getElementById('phoneScreen');
-                    const screenRect = phoneScreen.getBoundingClientRect();
-                    
-                    const newX = e.clientX - screenRect.left - this.dragOffset.x;
-                    const newY = e.clientY - screenRect.top - this.dragOffset.y;
-                    
-                    // Keep element within bounds
-                    const maxX = phoneScreen.offsetWidth - this.selectedElement.offsetWidth;
-                    const maxY = phoneScreen.offsetHeight - this.selectedElement.offsetHeight;
-                    
-                    this.selectedElement.style.left = Math.max(0, Math.min(newX, maxX)) + 'px';
-                    this.selectedElement.style.top = Math.max(0, Math.min(newY, maxY)) + 'px';
-                }
+                if (!this.isDragging || !this.selectedElement) return;
+                
+                const phoneScreen = document.getElementById('phoneScreen');
+                if (!phoneScreen) return;
+                
+                const screenRect = phoneScreen.getBoundingClientRect();
+                const newX = e.clientX - screenRect.left - this.dragOffset.x;
+                const newY = e.clientY - screenRect.top - this.dragOffset.y;
+                
+                // Keep element within bounds
+                const maxX = phoneScreen.offsetWidth - this.selectedElement.offsetWidth;
+                const maxY = phoneScreen.offsetHeight - this.selectedElement.offsetHeight;
+                
+                this.selectedElement.style.left = Math.max(0, Math.min(newX, maxX)) + 'px';
+                this.selectedElement.style.top = Math.max(0, Math.min(newY, maxY)) + 'px';
             }
             
             handleMouseUp() {
                 if (this.isDragging) {
                     this.isDragging = false;
-                    this.simulateSync();
+                    this.syncToSharedState();
                 }
             }
             
-            simulateConnection() {
-                // Simulate connection status changes
-                const statusEl = document.getElementById('connectionStatus');
+            syncFromSharedState(state) {
+                if (!state.elements) return;
                 
+                const phoneScreen = document.getElementById('phoneScreen');
+                if (!phoneScreen) return;
+                
+                // Clear existing elements
+                phoneScreen.querySelectorAll('.ui-element').forEach(el => el.remove());
+                
+                // Recreate elements from shared state
+                state.elements.forEach(elementData => {
+                    this.createElementFromData(elementData);
+                });
+                
+                console.log('Synced', state.elements.length, 'elements from shared state');
+            }
+            
+            createElementFromData(data) {
+                const element = document.createElement('div');
+                element.className = `ui-element ui-${data.type}`;
+                element.dataset.id = data.id;
+                element.dataset.type = data.type;
+                
+                // Apply all styles and properties
+                Object.assign(element.style, {
+                    left: data.left,
+                    top: data.top,
+                    width: data.width,
+                    height: data.height,
+                    background: data.background || '',
+                    color: data.color || '',
+                    fontSize: data.fontSize || '',
+                    fontWeight: data.fontWeight || ''
+                });
+                
+                element.textContent = data.textContent || '';
+                
+                // Add delete button for wizard mode
+                if (this.mode === 'wizard') {
+                    this.addDeleteButton(element);
+                }
+                
+                const phoneScreen = document.getElementById('phoneScreen');
+                if (phoneScreen) {
+                    phoneScreen.appendChild(element);
+                }
+                
+                // Update counter
+                this.elementCounter = Math.max(this.elementCounter, parseInt(data.id) || 0);
+            }
+            
+            syncToSharedState() {
+                const phoneScreen = document.getElementById('phoneScreen');
+                if (!phoneScreen) return;
+                
+                const elements = Array.from(phoneScreen.querySelectorAll('.ui-element')).map(el => ({
+                    id: el.dataset.id,
+                    type: el.dataset.type,
+                    left: el.style.left,
+                    top: el.style.top,
+                    width: el.style.width,
+                    height: el.style.height,
+                    textContent: el.textContent.replace('×', ''),
+                    background: el.style.background,
+                    color: el.style.color,
+                    fontSize: el.style.fontSize,
+                    fontWeight: el.style.fontWeight
+                }));
+                
+                this.sharedState.updateState({ elements });
+                console.log('Synced', elements.length, 'elements to shared state');
+            }
+            
+            shareSession() {
+                const url = `${window.location.origin}${window.location.pathname}?session=${this.sharedState.sessionId}`;
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(url).then(() => {
+                        this.showNotification('Session URL copied to clipboard!');
+                    }).catch(() => {
+                        this.showNotification('Share this URL: ' + url, 'warning');
+                    });
+                } else {
+                    this.showNotification('Share this URL: ' + url, 'warning');
+                }
+            }
+            
+            showNotification(message, type = 'success') {
+                const notification = document.getElementById('notification');
+                if (!notification) return;
+                
+                notification.textContent = message;
+                notification.className = `notification ${type}`;
+                notification.classList.add('show');
+                
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 3000);
+            }
+            
+            updateUI() {
+                // Update connection status
+                const statusEl = document.getElementById('connectionStatus');
+                if (statusEl) {
+                    statusEl.textContent = '🟢 Connected';
+                    statusEl.className = 'connection-status connected';
+                }
+                
+                // Simulate sync indicators
                 setInterval(() => {
-                    // Randomly simulate connection issues (very rarely)
-                    if (Math.random() < 0.02) {
-                        statusEl.textContent = '🔴 Reconnecting...';
-                        statusEl.className = 'connection-status disconnected';
+                    if (Math.random() < 0.05 && statusEl) {
+                        statusEl.textContent = '📡 Syncing...';
+                        statusEl.className = 'connection-status syncing';
                         
                         setTimeout(() => {
                             statusEl.textContent = '🟢 Connected';
                             statusEl.className = 'connection-status connected';
-                        }, 1000 + Math.random() * 2000);
+                        }, 800);
                     }
                 }, 5000);
             }
             
-            simulateSync() {
-                // In a real implementation, this would sync the UI state
-                // to the user's device via WebSocket or similar technology
-                console.log('Syncing UI state to user device...', {
-                    elements: this.elements.length,
-                    timestamp: new Date().toISOString()
-                });
-                
-                // Visual feedback
-                const statusEl = document.getElementById('connectionStatus');
-                const originalText = statusEl.textContent;
-                statusEl.textContent = '📡 Syncing...';
-                
+            showWelcomeMessage() {
                 setTimeout(() => {
-                    statusEl.textContent = originalText;
-                }, 500);
+                    const urlParams = new URLSearchParams(window.location.search);
+                    if (urlParams.get('session')) {
+                        this.showNotification('🎉 Joined shared session! Changes sync across devices.');
+                    } else {
+                        this.showNotification('💡 Click session ID to share with others!');
+                    }
+                }, 1500);
             }
         }
         
-        // Initialize the app
-        const app = new WizardOfOzApp();
+        // Initialize the app when DOM is ready
+        console.log('Starting Wizard of Oz App...');
         
-        // Add some demo content
-        setTimeout(() => {
-            if (app.mode === 'wizard') {
-                // Add a welcome message
-                const welcomeText = document.createElement('div');
-                welcomeText.className = 'ui-element ui-text';
-                welcomeText.textContent = 'Welcome! Try adding some UI elements.';
-                welcomeText.style.left = '20px';
-                welcomeText.style.top = '20px';
-                welcomeText.style.fontSize = '18px';
-                welcomeText.style.fontWeight = 'bold';
-                welcomeText.style.color = '#4facfe';
-                welcomeText.dataset.id = ++app.elementCounter;
-                welcomeText.dataset.type = 'text';
+        // Simple initialization
+        let app;
+        
+        function initApp() {
+            try {
+                app = new WizardOfOzApp();
+                console.log('App initialized successfully');
+            } catch (error) {
+                console.error('Failed to initialize app:', error);
                 
-                document.getElementById('phoneScreen').appendChild(welcomeText);
-                app.elements.push(welcomeText);
+                // Fallback: try again after a short delay
+                setTimeout(() => {
+                    try {
+                        app = new WizardOfOzApp();
+                        console.log('App initialized on retry');
+                    } catch (retryError) {
+                        console.error('App initialization failed completely:', retryError);
+                    }
+                }, 1000);
             }
-        }, 1000);
+        }
+        
+        // Start the app
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
     </script>
 </body>
 </html>
