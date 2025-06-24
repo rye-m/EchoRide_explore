@@ -42,13 +42,26 @@ wired-textarea {
   padding: 20px;
 }
 
+.launchpad-grid.expanded {
+    gap: 20px;      /* Doubled gap (was 10px) */
+    padding: 40px;  /* Doubled padding (was 20px) */
+}
+
 .pad-button {
   aspect-ratio: 1;
   min-height: 60px;
   font-size: 18px;
   font-weight: bold;
   border-radius: 8px;
+  transition: all 0.3s ease;  /* Extended transition time */
 }
+
+.pad-button.expanded {
+  width: 120px;    /* Doubled width (was 60px) */
+  height: 120px;   /* Doubled height (was 60px) */
+  font-size: 32px; /* Doubled font size (was 16px) */
+}
+
 
 .pad-button.has-sound {
   background: lightgreen !important;
@@ -178,11 +191,15 @@ wired-textarea {
 }
 /* Side-by-side layout for launchpad and assign sounds */
 .main-sections {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;  /* Normal: equal columns */
   gap: 20px;
-  max-width: 900px;
-  margin: 0 auto;
-  flex-wrap: wrap;
+  margin: 20px 0;
+  transition: all 0.3s ease;  /* Added smooth transition */
+}
+
+.main-sections.expanded {
+  grid-template-columns: 1fr 0fr;  /* Expanded: audio board takes full width */
 }
 
 .launchpad-section,
@@ -191,10 +208,51 @@ wired-textarea {
   min-width: 350px;
 }
 
+.assign-section {
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.assign-section.minimized {
+  width: 0;
+  opacity: 0;
+  margin: 0;
+  padding: 0;
+}
+
 .launchpad-section wired-card,
 .assign-section wired-card {
   max-width: none;
   width: 100%;
+}
+
+.pad-button.has-tts {
+  background: #2196F3;
+  color: white;
+}
+
+.tts-section {
+  margin: 20px 0;
+}
+
+.tts-controls {
+  padding: 20px;
+}
+
+.tts-controls wired-input {
+  width: 100%;
+  margin-bottom: 15px;
+}
+
+.tts-history {
+  padding: 20px;
+  border-top: 1px solid #ddd;
+}
+
+.history-container {
+  max-height: 200px;
+  overflow-y: auto;
+  margin: 10px 0;
 }
 
 @media (max-width: 768px) {
@@ -206,4 +264,55 @@ wired-textarea {
   .assign-section {
     min-width: auto;
   }
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+
+.section-title {
+  margin: 0;
+}
+
+.minimize-button {
+  background: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  width: 24px;
+  height: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  transition: background 0.2s;
+  user-select: none;
+}
+
+.minimize-button:hover {
+  background: #e0e0e0;
+}
+
+.minimize-button:active {
+  background: #d0d0d0;
+}
+
+.section-content {
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.section-content.minimized {
+  max-height: 0;
+  opacity: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.section-content:not(.minimized) {
+  max-height: 1000px;
+  opacity: 1;
 }
